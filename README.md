@@ -1,5 +1,6 @@
 # Lapis
 A DataStore abstraction library for Roblox that offers:
+- Caching
 - Session locking
 - Validators
 - Migrations
