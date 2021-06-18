@@ -1,0 +1,6 @@
+[submodule "vendor/testez"]
+	path = vendor/testez
+	url = https://www.github.com/Roblox/testez
+[submodule "vendor/roblox-lua-promise"]
+	path = vendor/roblox-lua-promise
+	url = https://www.github.com/evaera/roblox-lua-promise
