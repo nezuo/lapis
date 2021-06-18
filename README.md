@@ -7,6 +7,7 @@ A DataStore abstraction library for Roblox that offers:
 - Retries
 - Throttling
 - ~Autosaving~
+- Immutablity
 - Promise based API
 
 This library was inspired by [Quicksave](https://github.com/evaera/Quicksave).
