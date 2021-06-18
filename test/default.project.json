@@ -11,10 +11,6 @@
                     "$path": "../"
                 },
 
-                "DataStoreServiceMock": {
-                    "$path": "../../data-store-service-mock"
-                },
-
                 "Tasks": {
                     "$path": "Tasks.lua"
                 },

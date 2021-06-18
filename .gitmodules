@@ -4,3 +4,6 @@
 [submodule "vendor/roblox-lua-promise"]
 	path = vendor/roblox-lua-promise
 	url = https://www.github.com/evaera/roblox-lua-promise
+[submodule "vendor/data-store-service-mock"]
+	path = vendor/data-store-service-mock
+	url = https://github.com/Nezuo/data-store-service-mock
