@@ -1,10 +1,12 @@
 local Collection = require(script.Collection)
+local Config = require(script.Config)
 local Error = require(script.Error)
 
 local collections = {}
 
 local Lapis = {
 	Error = Error,
+	setGlobalConfig = Config.set,
 }
 
 function Lapis.createCollection(name, options)

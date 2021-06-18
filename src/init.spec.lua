@@ -70,6 +70,10 @@ return function()
 
 	local Lapis = require(script.Parent)
 
+	Lapis.setGlobalConfig({
+		showRetryWarnings = false,
+	})
+
 	describe("createCollection", function()
 		it("should return a collection", function()
 			local collection = Lapis.createCollection("collection", {
