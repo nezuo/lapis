@@ -1,0 +1,12 @@
+# Roblox model and place files
+*.rbxm
+*.rbxmx
+*.rbxl
+*.rbxlx
+
+# Roblox Studio lock files
+*.rbxlx.lock
+*.rbxl.lock
+
+# Roblox std
+/roblox.toml

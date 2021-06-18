@@ -1,0 +1,40 @@
+{
+    "name": "NAME-test",
+    "tree": {
+        "$className": "DataModel",
+
+        "ReplicatedStorage": {
+            "Vendor": {
+                "$path": "../vendor",
+
+                "NAME": {
+                    "$path": "../"
+                },
+
+                "DataStoreServiceMock": {
+                    "$path": "../../data-store-service-mock"
+                },
+
+                "Tasks": {
+                    "$path": "Tasks.lua"
+                },
+
+                "Clock": {
+                    "$path": "Clock.lua"
+                }
+            }
+        },
+
+        "ServerScriptService": {
+            "runTests": {
+                "$path": "runTests.server.lua"
+            }
+        },
+
+        "Players": {
+            "$properties": {
+                "CharacterAutoLoads": false
+            }
+        }
+    }
+}
