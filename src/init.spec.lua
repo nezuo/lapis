@@ -67,4 +67,32 @@ return function()
 		Managers.Budget.resetThrottleQueueSize()
 		Managers.Budget.reset()
 	end)
+
+	local Lapis = require(script.Parent)
+
+	describe("createCollection", function()
+		it("should return a collection", function()
+			local collection = Lapis.createCollection("collection", {
+				validate = function()
+					return true
+				end,
+			})
+
+			expect(collection).to.be.ok()
+			expect(collection.name).to.equal("collection")
+		end)
+
+		it("should throw when creating a duplicate collection", function()
+			Lapis.createCollection("duplicate", {
+				validate = function()
+					return true
+				end,
+			})
+
+			local ok, err = pcall(Lapis.createCollection, "duplicate")
+
+			expect(ok).to.equal(false)
+			expect(err.kind).to.equal(Lapis.Error.Kind.CollectionAlreadyExists)
+		end)
+	end)
 end
