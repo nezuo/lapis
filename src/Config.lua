@@ -1,6 +1,9 @@
+local DataStoreService = game:GetService("DataStoreService")
+
 local defaultConfig = {
 	retryAttempts = 5,
 	showRetryWarnings = true,
+	dataStoreService = DataStoreService,
 }
 
 local defaultConfigKeys = {}

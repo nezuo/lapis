@@ -13,12 +13,6 @@ return function()
 		print("Running tests at NORMAL SPEED.")
 	end
 
-	local DataStoreServiceMock = require(script.Parent.Parent.DataStoreServiceMock)
-	local getDataStoreService = require(script.Parent.getDataStoreService)
-	getDataStoreService.getDataStoreService = function()
-		return DataStoreServiceMock
-	end
-
 	local Clock = require(script.Parent.Parent.Clock)
 	local Tasks = require(script.Parent.Parent.Tasks)
 	local Managers = require(script.Parent.Parent.DataStoreServiceMock.Managers)
@@ -68,10 +62,12 @@ return function()
 		Managers.Budget.reset()
 	end)
 
+	local DataStoreServiceMock = require(script.Parent.Parent.DataStoreServiceMock)
 	local Lapis = require(script.Parent)
 
 	Lapis.setGlobalConfig({
 		showRetryWarnings = false,
+		dataStoreService = DataStoreServiceMock,
 	})
 
 	describe("createCollection", function()

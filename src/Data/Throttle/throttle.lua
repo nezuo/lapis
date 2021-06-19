@@ -1,12 +1,12 @@
 local callDataStore = require(script.Parent.callDataStore)
-local getDataStoreService = require(script.Parent.Parent.Parent.getDataStoreService).getDataStoreService
+local Config = require(script.Parent.Parent.Parent.Config)
 local Promise = require(script.Parent.Parent.Parent.Parent.Promise)
 local retry = require(script.Parent.retry)
 
 local queues = {}
 
 local function hasBudget(requestType)
-	return getDataStoreService():GetRequestBudgetForRequestType(requestType) > 0
+	return Config.get("dataStoreService"):GetRequestBudgetForRequestType(requestType) > 0
 end
 
 local function startQueue(requestType, initialRequest)

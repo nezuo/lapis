@@ -6,7 +6,7 @@ local Data = require(script.Parent.Data)
 local Document = require(script.Parent.Document)
 local Error = require(script.Parent.Error)
 local Promise = require(script.Parent.Parent.Promise)
-local getDataStoreService = require(script.Parent.getDataStoreService).getDataStoreService
+local Config = require(script.Parent.Config)
 
 local function getDefaultData(defaultData, lockId)
 	return {
@@ -26,7 +26,7 @@ function Collection.new(name, options)
 	assert(options.validate(options.defaultData))
 
 	return setmetatable({
-		_dataStore = getDataStoreService():GetDataStore(name),
+		_dataStore = Config.get("dataStoreService"):GetDataStore(name),
 		_defaultData = options.defaultData,
 		_openDocumentPromises = {},
 		migrations = options.migrations or {},
