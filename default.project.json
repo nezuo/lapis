@@ -1,6 +1,6 @@
 {
-    "name": "Lapis",
-    "tree": {
-        "$path": "src"
-    }
+  "name": "Lapis",
+  "tree": {
+    "$path": "src"
+  }
 }
