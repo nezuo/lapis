@@ -1,36 +1,30 @@
 {
-    "name": "lapis-test",
-    "tree": {
-        "$className": "DataModel",
-
-        "ReplicatedStorage": {
-            "Vendor": {
-                "$path": "../vendor",
-
-                "Lapis": {
-                    "$path": "../"
-                },
-
-                "Tasks": {
-                    "$path": "Tasks.lua"
-                },
-
-                "Clock": {
-                    "$path": "Clock.lua"
-                }
-            }
+  "name": "lapis-test",
+  "tree": {
+    "$className": "DataModel",
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    },
+    "ReplicatedStorage": {
+      "Vendor": {
+        "Clock": {
+          "$path": "Clock.lua"
         },
-
-        "ServerScriptService": {
-            "runTests": {
-                "$path": "runTests.server.lua"
-            }
+        "Lapis": {
+          "$path": "../"
         },
-
-        "Players": {
-            "$properties": {
-                "CharacterAutoLoads": false
-            }
-        }
+        "Tasks": {
+          "$path": "Tasks.lua"
+        },
+        "$path": "../vendor"
+      }
+    },
+    "ServerScriptService": {
+      "runTests": {
+        "$path": "runTests.server.lua"
+      }
     }
+  }
 }
