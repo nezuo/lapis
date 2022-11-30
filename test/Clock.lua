@@ -56,7 +56,7 @@ function Clock.progress(amount)
 
 	local finishAt = clock + amount
 
-	for _, task in ipairs(Managers.Tasks.get(finishAt)) do
+	for _, task in Managers.Tasks.get(finishAt) do
 		Tasks.addTask(task)
 	end
 

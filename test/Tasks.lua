@@ -26,7 +26,7 @@ function Tasks.addTask(task)
 end
 
 function Tasks.resumeAll()
-	for _, task in ipairs(Tasks.tasks) do
+	for _, task in Tasks.tasks do
 		task.resume()
 	end
 

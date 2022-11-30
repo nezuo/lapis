@@ -7,7 +7,7 @@ local defaultConfig = {
 }
 
 local defaultConfigKeys = {}
-for key in pairs(defaultConfig) do
+for key in defaultConfig do
 	table.insert(defaultConfigKeys, key)
 end
 
@@ -28,7 +28,7 @@ local currentConfig = setmetatable({}, {
 local Config = {}
 
 function Config.set(configValues)
-	for key, value in pairs(configValues) do
+	for key, value in configValues do
 		if defaultConfig[key] == nil then
 			error(makeInvalidKeyError(key))
 		end
