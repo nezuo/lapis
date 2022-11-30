@@ -2,7 +2,7 @@ local Collection = require(script.Collection)
 local Config = require(script.Config)
 local Error = require(script.Error)
 
-local collections = {}
+local usedCollections = {}
 
 local Lapis = {
 	Error = Error,
@@ -10,13 +10,13 @@ local Lapis = {
 }
 
 function Lapis.createCollection(name, options)
-	if collections[name] ~= nil then
-		error(Error.new(Error.Kind.CollectionAlreadyExists, string.format("Collection %s already exists", name)))
+	if usedCollections[name] then
+		error(string.format("Collection `%s` already exists", name))
 	end
 
-	collections[name] = Collection.new(name, options)
+	usedCollections[name] = true
 
-	return collections[name]
+	return Collection.new(name, options)
 end
 
 return Lapis

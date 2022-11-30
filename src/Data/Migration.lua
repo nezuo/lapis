@@ -16,14 +16,14 @@ local function assertValidMigration(oldValue, migrated, migrationVersion)
 		error(string.format("Migration %i must return a validate function", migrationVersion))
 	end
 
-	if oldValue == migrated.value then
-		error(string.format("Migration %i changed value mutably", migrationVersion))
-	end
-
 	local ok, err = migrated.validate(oldValue)
 
 	if not ok then
 		error(string.format("Migration %i failed validation: %s", migrationVersion, err))
+	end
+
+	if oldValue == migrated.value then
+		error(string.format("Migration %i changed value mutably", migrationVersion))
 	end
 end
 

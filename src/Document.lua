@@ -8,7 +8,7 @@ Document.__index = Document
 function Document.new(collection, name, data, lockId)
 	return setmetatable({
 		_data = data,
-		_isOpen = true,
+		_open = true,
 		_lockId = lockId,
 		collection = collection,
 		name = name,
@@ -20,9 +20,9 @@ function Document:_isLockInconsistent(value)
 end
 
 function Document:close()
-	assert(self._isOpen, "Cannot close a closed document")
+	assert(self._open, "Cannot close a closed document")
 
-	self._isOpen = false
+	self._open = false
 
 	return Promise.try(Data.update, self.collection, self.name, function(value)
 		if self:_isLockInconsistent(value) then
@@ -44,7 +44,7 @@ function Document:read()
 end
 
 function Document:save()
-	assert(self._isOpen, "Cannot save a closed document")
+	assert(self._open, "Cannot save a closed document")
 
 	return Promise.new(function(resolve, reject)
 		self._data = Data.update(self.collection, self.name, function(value)
@@ -64,7 +64,7 @@ function Document:save()
 end
 
 function Document:write(data)
-	assert(self._isOpen, "Cannot write to a closed document")
+	assert(self._open, "Cannot write to a closed document")
 
 	if self._data.data == data then
 		error("Cannot write to a document mutably")

@@ -29,7 +29,7 @@ local function startWriteQueue(dataStore, key, initialWrite)
 
 	writeQueues[dataStore][key] = writeQueue
 
-	coroutine.wrap(function()
+	task.spawn(function()
 		while #writeQueue > 0 do
 			local write = table.remove(writeQueue, 1)
 
@@ -41,7 +41,7 @@ local function startWriteQueue(dataStore, key, initialWrite)
 		end
 
 		writeQueues[dataStore][key] = nil
-	end)()
+	end)
 end
 
 local function queueWrite(dataStore, key, write)

@@ -5,7 +5,7 @@ local function copyDeep(valueToCopy)
 
 	local clone = {}
 
-	for key, value in pairs(valueToCopy) do
+	for key, value in valueToCopy do
 		clone[key] = copyDeep(value)
 	end
 

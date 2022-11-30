@@ -14,7 +14,7 @@ local function startQueue(requestType, initialRequest)
 
 	queues[requestType] = queue
 
-	coroutine.wrap(function()
+	task.spawn(function()
 		while #queue > 0 do
 			local request = table.remove(queue, 1)
 
@@ -32,7 +32,7 @@ local function startQueue(requestType, initialRequest)
 		end
 
 		queues[requestType] = nil
-	end)()
+	end)
 end
 
 local function queueRequest(requestType, request)
