@@ -10,3 +10,10 @@
 
 # Roblox std
 /roblox.toml
+
+# Wally
+/Packages
+/ServerPackages
+
+# Luau LSP
+/sourcemap.json
