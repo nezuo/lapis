@@ -1,6 +1,10 @@
-local Promise = require(script.Parent.Promise)
-local Tasks = require(script.Parent.Tasks)
-local Managers = require(script.Parent.DataStoreServiceMock.Managers)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
+local Promise = require(ReplicatedStorage.Packages.Promise)
+local Tasks = require(ReplicatedStorage.Tasks)
+
+local Managers = DataStoreServiceMock.Managers
 
 local clock = 0
 

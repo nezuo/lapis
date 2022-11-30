@@ -1,9 +1,13 @@
-return function()
-	local Clock = require(script.Parent.Parent.Clock)
-	local Collection = require(script.Parent.Collection)
-	local Error = require(script.Parent.Error)
-	local Managers = require(script.Parent.Parent.DataStoreServiceMock.Managers)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Clock = require(ReplicatedStorage.Clock)
+local Collection = require(script.Parent.Collection)
+local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
+local Error = require(script.Parent.Error)
+
+local Managers = DataStoreServiceMock.Managers
+
+return function()
 	it("should return a collection", function()
 		local collection = Collection.new("foo", {
 			validate = function(value)

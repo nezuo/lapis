@@ -1,25 +1,33 @@
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Clock = require(ReplicatedStorage.Clock)
+local Data = require(script.Parent.Data)
+local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
+local Lapis = require(script.Parent)
+local Tasks = require(ReplicatedStorage.Tasks)
+
 local SUPER_SPEED = true
 
+local Constants = DataStoreServiceMock.Constants
+local Managers = DataStoreServiceMock.Managers
+
+if SUPER_SPEED then
+	Constants.IS_UNIT_TEST_MODE = true
+	print("Running tests at SUPER SPEED.")
+else
+	Constants.IS_UNIT_TEST_MODE = false
+	print("Running tests at NORMAL SPEED.")
+end
+
+Clock.start(SUPER_SPEED)
+
+Lapis.setGlobalConfig({
+	showRetryWarnings = false,
+	dataStoreService = DataStoreServiceMock,
+})
+
 return function()
-	local HttpService = game:GetService("HttpService")
-
-	local Constants = require(script.Parent.Parent.DataStoreServiceMock.Constants)
-
-	if SUPER_SPEED then
-		Constants.IS_UNIT_TEST_MODE = true
-		print("Running tests at SUPER SPEED.")
-	else
-		Constants.IS_UNIT_TEST_MODE = false
-		print("Running tests at NORMAL SPEED.")
-	end
-
-	local Clock = require(script.Parent.Parent.Clock)
-	local Tasks = require(script.Parent.Parent.Tasks)
-	local Managers = require(script.Parent.Parent.DataStoreServiceMock.Managers)
-	local Data = require(script.Parent.Data)
-
-	Clock.start(SUPER_SPEED)
-
 	beforeAll(function(context)
 		context.makeData = function(options)
 			options = options or {}
@@ -61,14 +69,6 @@ return function()
 		Managers.Budget.resetThrottleQueueSize()
 		Managers.Budget.reset()
 	end)
-
-	local DataStoreServiceMock = require(script.Parent.Parent.DataStoreServiceMock)
-	local Lapis = require(script.Parent)
-
-	Lapis.setGlobalConfig({
-		showRetryWarnings = false,
-		dataStoreService = DataStoreServiceMock,
-	})
 
 	describe("createCollection", function()
 		it("should return a collection", function()
