@@ -8,15 +8,6 @@ local Error = require(script.Parent.Error)
 local Promise = require(script.Parent.Parent.Promise)
 local Config = require(script.Parent.Config)
 
-local function getDefaultData(defaultData, lockId)
-	return {
-		createdAt = os.time(),
-		updatedAt = os.time(),
-		lockId = lockId,
-		data = copyDeep(defaultData),
-	}
-end
-
 local Collection = {}
 Collection.__index = Collection
 
@@ -41,7 +32,12 @@ function Collection:_openDocument(name)
 	return Promise.new(function(resolve, reject)
 		local data = Data.update(self, name, function(oldValue)
 			if oldValue == nil then
-				return getDefaultData(self._defaultData, lockId)
+				return {
+					createdAt = os.time(),
+					updatedAt = os.time(),
+					lockId = lockId,
+					data = copyDeep(self._defaultData),
+				}
 			end
 
 			if oldValue.lockId ~= nil and os.time() - oldValue.updatedAt < Constants.LOCK_EXPIRE then
@@ -60,11 +56,13 @@ function Collection:_openDocument(name)
 			resolve(data)
 		end
 	end):andThen(function(data)
-		return Promise.try(function()
-			assert(self.validate(data.data))
+		local ok, message = self.validate(data.data)
 
-			return Document.new(self, name, data, lockId)
-		end)
+		if not ok then
+			return Promise.reject(message)
+		else
+			return Promise.resolve(Document.new(self, name, data, lockId))
+		end
 	end)
 end
 
@@ -78,14 +76,17 @@ function Collection:openDocument(name)
 
 		self._openDocumentPromises[name] = promise
 
-		promise:catch(function()
-			self:_removeDocument(name)
+		-- We use finally instead of catch so it doesn't handle rejection. Otherwise, the promise could silently error.
+		promise:finally(function(status)
+			if status ~= Promise.Status.Resolved then
+				self:_removeDocument(name)
+			end
 		end)
 
-		return Promise.resolve(promise)
+		return promise
 	end
 
-	return Promise.resolve(self._openDocumentPromises[name])
+	return self._openDocumentPromises[name]
 end
 
 return Collection

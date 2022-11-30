@@ -68,16 +68,6 @@ return function()
 			expect(document).to.equal(otherDocument)
 		end)
 
-		it("should return a unique promise", function()
-			local promise = collection:openDocument("document")
-			local otherPromise = collection:openDocument("document")
-
-			expect(promise).never.to.equal(otherPromise)
-
-			promise:expect()
-			otherPromise:expect()
-		end)
-
 		it("should throw when data stores are erroring", function()
 			Managers.Errors.setErrorChance(1)
 
@@ -187,10 +177,9 @@ return function()
 				defaultData = { a = 5 },
 			})
 
-			local ok, err = newCollection:openDocument("document"):await()
-
-			expect(ok).to.equal(false)
-			expect(string.find(err.error, "a should equal 5"))
+			expect(function()
+				newCollection:openDocument("document"):expect()
+			end).to.throw("a should equal 5")
 		end)
 	end)
 
@@ -209,7 +198,7 @@ return function()
 		local ok, err = collection:openDocument("migration"):await()
 
 		expect(ok).to.equal(false)
-		expect(string.find(err.extra, "must return a table"))
+		expect(string.find(err.extra, "must return a table")).to.be.ok()
 	end)
 
 	it("should throw when migration does return a validate function", function(context)
@@ -229,7 +218,7 @@ return function()
 		local ok, err = collection:openDocument("migration"):await()
 
 		expect(ok).to.equal(false)
-		expect(string.find(err.extra, "validate function"))
+		expect(string.find(err.extra, "validate function")).to.be.ok()
 	end)
 
 	it("should throw when migration does not change value immutably", function(context)
@@ -254,7 +243,7 @@ return function()
 		local ok, err = collection:openDocument("migration"):await()
 
 		expect(ok).to.equal(false)
-		expect(string.find(err.extra, "mutably"))
+		expect(string.find(err.extra, "mutably")).to.be.ok()
 	end)
 
 	it("should throw when validate does not pass", function(context)
@@ -279,7 +268,7 @@ return function()
 		local ok, err = collection:openDocument("migration"):await()
 
 		expect(ok).to.equal(false)
-		expect(string.find(err.extra, "failed validation"))
+		expect(string.find(err.extra, "failed validation")).to.be.ok()
 	end)
 
 	it("should migrate the data", function(context)

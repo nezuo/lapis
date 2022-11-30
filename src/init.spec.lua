@@ -89,10 +89,9 @@ return function()
 				end,
 			})
 
-			local ok, err = pcall(Lapis.createCollection, "duplicate")
-
-			expect(ok).to.equal(false)
-			expect(err.kind).to.equal(Lapis.Error.Kind.CollectionAlreadyExists)
+			expect(function()
+				Lapis.createCollection("duplicate")
+			end).to.throw("Collection `duplicate` already exists")
 		end)
 	end)
 end
