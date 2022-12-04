@@ -57,11 +57,16 @@ function Collection:openDocument(key)
 				error("Could not acquire lock")
 			end
 
-			value.lockId = lockId
+			local decompressed = Compression.decompress(value.compressionScheme, value.data)
+			local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, decompressed)
+			local scheme, compressed = Compression.compress(migrated)
 
-			Migration.migrate(self.options.migrations, value)
-
-			return value
+			return {
+				compressionScheme = scheme,
+				migrationVersion = #self.options.migrations,
+				lockId = lockId,
+				data = compressed,
+			}
 		end):andThen(function(value)
 			local data = Compression.decompress(value.compressionScheme, value.data)
 			local ok, message = self.options.validate(data)

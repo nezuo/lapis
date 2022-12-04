@@ -2,20 +2,18 @@ local freezeDeep = require(script.Parent.freezeDeep)
 
 local Migration = {}
 
-function Migration.migrate(migrations, value)
-	local oldVersion = value.migrationVersion
-
+function Migration.migrate(migrations, oldVersion, data)
 	if oldVersion < #migrations then
 		for version = oldVersion + 1, #migrations do
-			local migrated = migrations[version](value.data)
+			local migrated = migrations[version](data)
 
 			freezeDeep(migrated)
 
-			value.data = migrated
+			data = migrated
 		end
-
-		value.migrationVersion = #migrations
 	end
+
+	return data
 end
 
 return Migration
