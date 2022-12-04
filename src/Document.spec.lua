@@ -1,262 +1,164 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Clock = require(ReplicatedStorage.Clock)
-local Collection = require(script.Parent.Collection)
-local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
-local Error = require(script.Parent.Error)
+local Lapis = require(ReplicatedStorage.Packages.Lapis)
+local Promise = require(ReplicatedStorage.Packages.Promise)
 
-local Managers = DataStoreServiceMock.Managers
+local DEFAULT_OPTIONS = {
+	validate = function(data)
+		return typeof(data.foo) == "string", "foo must be a string"
+	end,
+	defaultData = { foo = "bar" },
+}
 
 return function()
-	local document
-	local collection
-	beforeEach(function()
-		collection = Collection.new("collection", {
-			validate = function(data)
-				return typeof(data.foo) == "string", "foo must be a string"
-			end,
-			defaultData = { foo = "bar" },
+	it("combines save and close requests", function(context)
+		local document = Lapis.createCollection("fff", DEFAULT_OPTIONS):openDocument("doc"):expect()
+
+		document:write({
+			foo = "updated value",
 		})
 
-		document = collection:openDocument("document"):expect()
-		Clock.progress(6)
+		local save = document:save()
+		local close = document:close()
+
+		-- Finish the write cooldown from opening the document.
+		context.clock:tick(6)
+
+		Promise.all({ save, close }):expect()
+
+		expect(save).to.equal(close)
+
+		local saved = context.read("fff", "doc")
+
+		expect(saved).to.be.a("table")
+		expect(saved.lockId).never.to.be.ok()
+		expect(saved.data.foo).to.equal("updated value")
 	end)
 
-	describe("read", function()
-		it("should return the data", function()
-			expect(document:read().foo).to.equal("bar")
-		end)
+	it("saves data", function(context)
+		local document = Lapis.createCollection("12345", DEFAULT_OPTIONS):openDocument("doc"):expect()
+
+		-- Finish the write cooldown from opening the document.
+		context.clock:tick(6)
+
+		document:write({
+			foo = "new value",
+		})
+
+		document:save():expect()
+
+		local saved = context.read("12345", "doc")
+
+		expect(saved).to.be.a("table")
+		expect(saved.lockId).to.be.a("string")
+		expect(saved.data.foo).to.equal("new value")
 	end)
 
-	describe("write", function()
-		it("should write the data", function()
-			document:write({
-				foo = "baz",
-			})
+	it("writes the data", function()
+		local document = Lapis.createCollection("1", DEFAULT_OPTIONS):openDocument("doc"):expect()
 
-			expect(document:read().foo).to.equal("baz")
-		end)
+		document:write({
+			foo = "baz",
+		})
 
-		it("should throw when writing to a closed document", function()
-			local promise = document:close()
-
-			expect(function()
-				document:write({
-					foo = "qux",
-				})
-			end).to.throw("Cannot write to a closed document")
-
-			promise:expect()
-		end)
-
-		it("should throw when setting the same value", function()
-			local value = document:read()
-
-			expect(function()
-				document:write(value)
-			end).to.throw("Cannot write to a document mutably")
-		end)
-
-		it("should throw when writing a value that does not match validate", function()
-			expect(function()
-				document:write({
-					foo = 5,
-				})
-			end).to.throw("foo must be a string")
-		end)
+		expect(document:read().foo).to.equal("baz")
 	end)
 
-	describe("close", function()
-		it("should remove the lock", function()
-			document:close():expect()
+	it("write throws if data doesn't validate", function()
+		local document = Lapis.createCollection("2", DEFAULT_OPTIONS):openDocument("doc"):expect()
 
-			Clock.progress(6)
-
-			expect(function()
-				collection:openDocument("document"):expect()
-			end).never.to.throw()
-		end)
-
-		it("should remove the document from the collection", function()
-			document:close():expect()
-
-			Clock.progress(6)
-
-			local nextDocument = collection:openDocument("document"):expect()
-
-			expect(document).never.to.equal(nextDocument)
-		end)
-
-		it("should throw when closing a closed document", function()
-			local promise = document:close()
-
-			expect(function()
-				document:close()
-			end).to.throw("Cannot close a closed document")
-
-			promise:expect()
-		end)
-
-		it("should save the data", function(context)
+		expect(function()
 			document:write({
-				foo = "hello",
+				foo = 5,
 			})
-
-			document:close():expect()
-
-			expect(context.read(collection, document).data.foo).to.equal("hello")
-		end)
-
-		it("should not save the data when lock is inconsistent", function(context)
-			Managers.Data.Global.set("collection", "global", "document", context.makeData({ data = document:read() }))
-
-			document:write({
-				foo = "updated",
-			})
-
-			document:close():expect()
-
-			expect(context.read(collection, document).data.foo).never.to.equal("updated")
-		end)
+		end).to.throw("foo must be a string")
 	end)
 
-	describe("save", function()
-		it("should throw when saving a closed document", function()
-			local promise = document:close()
+	it("throws when writing/saving/closing a closed document", function(context)
+		local document = Lapis.createCollection("5", DEFAULT_OPTIONS):openDocument("doc"):expect()
 
-			expect(function()
-				document:save()
-			end).to.throw("Cannot save a closed document")
+		context.clock:tick(6)
 
-			promise:expect()
-		end)
+		local promise = document:close()
 
-		it("should save the data", function(context)
-			document:write({
-				foo = "hello",
-			})
+		expect(function()
+			document:write({})
+		end).to.throw("Cannot write to a closed document")
 
+		expect(function()
+			document:save()
+		end).to.throw("Cannot save a closed document")
+
+		expect(function()
+			document:close()
+		end).to.throw("Cannot close a closed document")
+
+		promise:expect()
+	end)
+
+	it("loads with default data", function(context)
+		local document = Lapis.createCollection("o", DEFAULT_OPTIONS):openDocument("a"):expect()
+
+		expect(document:read().foo).to.equal("bar")
+	end)
+
+	it("loads with existing data", function(context)
+		local collection = Lapis.createCollection("xyz", DEFAULT_OPTIONS)
+
+		context.write("xyz", "xyz", {
+			foo = "existing",
+		})
+
+		local document = collection:openDocument("xyz"):expect()
+
+		expect(document:read().foo).to.equal("existing")
+	end)
+
+	it("doesn't save data when the lock was stolen", function(context)
+		local collection = Lapis.createCollection("hi", DEFAULT_OPTIONS)
+
+		local document = collection:openDocument("hi"):expect()
+
+		context.write("hi", "hi", {
+			foo = "stolen",
+		}, "stolenLockId")
+
+		document:write({
+			foo = "qux",
+		})
+
+		context.clock:tick(6)
+
+		expect(function()
 			document:save():expect()
+		end).to.throw("The session lock was stolen")
 
-			expect(context.read(collection, document).data.foo).to.equal("hello")
-		end)
+		expect(context.read("hi", "hi").data.foo).to.equal("stolen")
 
-		it("should not save the data when lock is inconsistent", function(context)
-			Managers.Data.Global.set("collection", "global", "document", context.makeData({ data = document:read() }))
+		context.clock:tick(6)
 
-			document:write({
-				foo = "updated",
-			})
+		expect(function()
+			document:close():expect()
+		end).to.throw("The session lock was stolen")
 
-			document:save():await()
+		expect(context.read("hi", "hi").data.foo).to.equal("stolen")
+	end)
 
-			expect(context.read(collection, document).data.foo).never.to.equal("hello")
-		end)
+	it("doesn't throw when the budget is exhausted", function(context)
+		local document = Lapis.createCollection("bye", DEFAULT_OPTIONS):openDocument("bye"):expect()
 
-		it("should throw when lock is inconsistent", function(context)
-			Managers.Data.Global.set("collection", "global", "document", context.makeData({ data = document:read() }))
+		context.clock:tick(6)
 
-			local ok, err = document:save():await()
+		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.GetAsync] = 0
+		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.SetIncrementAsync] = 0
+		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.UpdateAsync] = 0
 
-			expect(ok).to.equal(false)
-			expect(err.kind).to.equal(Error.Kind.InconsistentLock)
-		end)
+		local promise = document:save()
 
-		it("should throw when data stores are erroring", function()
-			Managers.Errors.setErrorChance(1)
+		context.clock:tick(1)
 
-			local ok, err = document:save():await()
-
-			expect(ok).to.equal(false)
-			expect(err.kind).to.equal(Error.Kind.DataStoreFailure)
-		end)
-
-		it("should retry", function()
-			Managers.Errors.setErrorCounter(1)
-
-			expect(function()
-				document:save():expect()
-			end).never.to.throw()
-		end)
-
-		describe("when the budget is exhausted", function()
-			beforeEach(function()
-				Managers.Budget.setBudget(Enum.DataStoreRequestType.UpdateAsync, 0)
-				Managers.Budget.setThrottleQueueSize(0)
-			end)
-
-			it("should not throw", function()
-				expect(function()
-					document:save():expect()
-				end).never.to.throw()
-			end)
-
-			it("should should update the data", function(context)
-				document:write({
-					foo = "newValue",
-				})
-
-				document:save():expect()
-
-				expect(context.read(collection, document).data.foo).to.equal("newValue")
-			end)
-		end)
-
-		describe("when the document is on write cooldown", function()
-			beforeEach(function()
-				Managers.Budget.setThrottleQueueSize(0)
-				document:save()
-			end)
-
-			it("should not throw", function()
-				local promise = document:save()
-
-				Clock.progress(6)
-
-				expect(function()
-					promise:expect()
-				end).never.to.throw()
-			end)
-
-			it("should not throw on multiple requests", function()
-				local first = document:save()
-				local second = document:save()
-
-				Clock.progress(12)
-
-				expect(function()
-					first:expect()
-					second:expect()
-				end).never.to.throw()
-			end)
-
-			it("should not throw when the budget is exhausted", function()
-				Managers.Budget.setBudget(Enum.DataStoreRequestType.UpdateAsync, 0)
-
-				local promise = document:save()
-
-				Clock.progress(6)
-
-				expect(function()
-					promise:expect()
-				end).never.to.throw()
-			end)
-
-			it("should should update the data when the budget is exhausted", function(context)
-				Managers.Budget.setBudget(Enum.DataStoreRequestType.UpdateAsync, 0)
-
-				document:write({
-					foo = "newValue",
-				})
-
-				local promise = document:save()
-
-				Clock.progress(6)
-
-				promise:expect()
-
-				expect(context.read(collection, document).data.foo).to.equal("newValue")
-			end)
-		end)
+		expect(function()
+			promise:expect()
+		end).never.to.throw()
 	end)
 end

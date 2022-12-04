@@ -1,92 +1,91 @@
 local HttpService = game:GetService("HttpService")
 
-local Constants = require(script.Parent.Constants)
-local copyDeep = require(script.Parent.copyDeep)
+local Compression = require(script.Parent.Compression)
+local Config = require(script.Parent.Config)
 local Data = require(script.Parent.Data)
 local Document = require(script.Parent.Document)
-local Error = require(script.Parent.Error)
+local freezeDeep = require(script.Parent.freezeDeep)
+local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
-local Config = require(script.Parent.Config)
+local UnixTimestampMillis = require(script.Parent.UnixTimestampMillis)
 
+local LOCK_EXPIRE = 30 * 60
+
+--[=[
+	Collections are analagous to [GlobalDataStore].
+
+	@class Collection
+]=]
 local Collection = {}
 Collection.__index = Collection
 
 function Collection.new(name, options)
-	assert(typeof(options) == "table", "`options` must be a table")
-	assert(typeof(options.validate) == "function", "`options.validate` must be a function")
 	assert(options.validate(options.defaultData))
 
+	freezeDeep(options.defaultData)
+
+	options.migrations = options.migrations or {}
+
 	return setmetatable({
-		_dataStore = Config.get("dataStoreService"):GetDataStore(name),
-		_defaultData = options.defaultData,
-		_openDocumentPromises = {},
-		migrations = options.migrations or {},
-		name = name,
-		validate = options.validate,
+		dataStore = Config.get("dataStoreService"):GetDataStore(name),
+		options = options,
+		openDocuments = {},
 	}, Collection)
 end
 
-function Collection:_openDocument(name)
-	local lockId = HttpService:GenerateGUID(false)
+--[=[
+	Loads the document with `key`, migrates it, and session locks it.
 
-	return Promise.new(function(resolve, reject)
-		local data = Data.update(self, name, function(oldValue)
-			if oldValue == nil then
+	@param key string
+	@return Promise<Document>
+]=]
+function Collection:openDocument(key)
+	if self.openDocuments[key] == nil then
+		local lockId = HttpService:GenerateGUID(false)
+
+		local promise = Data.load(self.dataStore, key, function(value, keyInfo)
+			if value == nil then
 				return {
-					createdAt = os.time(),
-					updatedAt = os.time(),
+					compressionScheme = "None",
+					migrationVersion = #self.options.migrations,
 					lockId = lockId,
-					data = copyDeep(self._defaultData),
+					data = self.options.defaultData,
 				}
 			end
 
-			if oldValue.lockId ~= nil and os.time() - oldValue.updatedAt < Constants.LOCK_EXPIRE then
-				return nil
+			if value.lockId ~= nil and (UnixTimestampMillis.get() - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE then
+				error("Could not acquire lock")
 			end
 
-			oldValue.updatedAt = os.time()
-			oldValue.lockId = lockId
+			value.lockId = lockId
 
-			return oldValue
+			Migration.migrate(self.options.migrations, value)
+
+			return value
+		end):andThen(function(value)
+			local data = Compression.decompress(value.compressionScheme, value.data)
+			local ok, message = self.options.validate(data)
+
+			if ok then
+				return Document.new(self, key, self.options.validate, lockId, data)
+			else
+				return Promise.reject(message)
+			end
 		end)
 
-		if data == nil then
-			reject(Error.new(Error.Kind.CouldNotAcquireLock))
-		else
-			resolve(data)
-		end
-	end):andThen(function(data)
-		local ok, message = self.validate(data.data)
+		self.openDocuments[key] = promise
 
-		if not ok then
-			return Promise.reject(message)
-		else
-			return Promise.resolve(Document.new(self, name, data, lockId))
-		end
-	end)
-end
-
-function Collection:_removeDocument(name)
-	self._openDocumentPromises[name] = nil
-end
-
-function Collection:openDocument(name)
-	if self._openDocumentPromises[name] == nil then
-		local promise = self:_openDocument(name)
-
-		self._openDocumentPromises[name] = promise
-
-		-- We use finally instead of catch so it doesn't handle rejection. Otherwise, the promise could silently error.
+		-- finally is used instead of catch so it doesn't handle rejection.
 		promise:finally(function(status)
 			if status ~= Promise.Status.Resolved then
-				self:_removeDocument(name)
+				self.openDocuments[key] = nil
 			end
 		end)
 
 		return promise
 	end
 
-	return self._openDocumentPromises[name]
+	return self.openDocuments[key]
 end
 
 return Collection

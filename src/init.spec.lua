@@ -1,97 +1,239 @@
-local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Clock = require(ReplicatedStorage.Clock)
-local Data = require(script.Parent.Data)
 local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
 local Lapis = require(script.Parent)
-local Tasks = require(ReplicatedStorage.Tasks)
+local Promise = require(script.Parent.Parent.Promise)
+local UnixTimestampMillis = require(script.Parent.UnixTimestampMillis)
 
 local SUPER_SPEED = true
-
-local Constants = DataStoreServiceMock.Constants
-local Managers = DataStoreServiceMock.Managers
+local DEFAULT_OPTIONS = {
+	validate = function(data)
+		return typeof(data.apples) == "number", "apples should be a number"
+	end,
+	defaultData = {
+		apples = 20,
+	},
+}
 
 if SUPER_SPEED then
-	Constants.IS_UNIT_TEST_MODE = true
 	print("Running tests at SUPER SPEED.")
 else
-	Constants.IS_UNIT_TEST_MODE = false
 	print("Running tests at NORMAL SPEED.")
 end
 
-Clock.start(SUPER_SPEED)
-
-Lapis.setGlobalConfig({
-	showRetryWarnings = false,
-	dataStoreService = DataStoreServiceMock,
-})
+Lapis.setConfig({ showRetryWarnings = false })
 
 return function()
-	beforeAll(function(context)
-		context.makeData = function(options)
-			options = options or {}
+	beforeEach(function(context)
+		local dataStoreService = if SUPER_SPEED then DataStoreServiceMock.manual() else DataStoreServiceMock.new()
 
-			return {
-				schemeKind = "Raw",
-				schemeVersion = 1,
-				data = HttpService:JSONEncode({
-					migrationVersion = 0,
-					data = {
-						createdAt = os.time(),
-						updatedAt = os.time(),
-						lockId = options.lockId,
-						data = options.data,
-					},
-				}),
-			}
+		context.dataStoreService = dataStoreService
+
+		-- We want requests to overflow the throttle queue so that they result in errors.
+		dataStoreService.budget:setMaxThrottleQueueSize(0)
+
+		Lapis.setConfig({ dataStoreService = dataStoreService })
+
+		context.clock = Clock.new(dataStoreService, SUPER_SPEED)
+
+		UnixTimestampMillis.get = function()
+			return context.clock:now() * 1000
 		end
 
-		context.read = function(collection, document)
-			return Data.unpack(
-				Managers.Data.Global.get(collection.name, "global")[document.name],
-				collection.migrations
-			)
+		context.write = function(name, key, data, lockId)
+			local dataStore = dataStoreService.dataStores[name]["global"]
+
+			dataStore:write(key, {
+				compressionScheme = "None",
+				migrationVersion = 0,
+				lockId = lockId,
+				data = data,
+			})
+		end
+
+		context.read = function(name, key)
+			return dataStoreService.dataStores[name]["global"].data[key]
+		end
+
+		if SUPER_SPEED then
+			Promise.delay = function(duration)
+				return Promise.new(function(resolve)
+					context.clock:addTask({
+						resumeAt = context.clock:now() + duration,
+						resume = resolve,
+					})
+				end)
+			end
 		end
 	end)
 
-	beforeEach(function()
-		Tasks.unlock()
+	afterEach(function(context)
+		-- Complete any remaining write cooldowns.
+		context.clock:tick(6)
 	end)
 
-	afterEach(function()
-		Tasks.lock()
-		Tasks.resumeAll()
-		Clock.reset()
-		Managers.DataStores.reset()
-		Managers.Errors.setErrorChance(0)
-		Managers.Errors.setErrorCounter(0)
-		Managers.Budget.resetThrottleQueueSize()
-		Managers.Budget.reset()
+	it("throws when setting invalid config key", function()
+		expect(function()
+			Lapis.setConfig({
+				foo = true,
+			})
+		end).to.throw("Invalid config key `foo`")
 	end)
 
-	describe("createCollection", function()
-		it("should return a collection", function()
-			local collection = Lapis.createCollection("collection", {
-				validate = function()
-					return true
+	it("throws when creating a duplicate collection", function()
+		Lapis.createCollection("foo", DEFAULT_OPTIONS)
+
+		expect(function()
+			Lapis.createCollection("foo", DEFAULT_OPTIONS)
+		end).to.throw("Collection `foo` already exists")
+	end)
+
+	it("freezes default data", function()
+		local defaultData = {
+			a = {
+				b = {
+					c = 5,
+				},
+			},
+		}
+
+		Lapis.createCollection("baz", {
+			validate = function()
+				return true
+			end,
+			defaultData = defaultData,
+		})
+
+		expect(function()
+			defaultData.a.b.c = 8
+		end).to.throw()
+	end)
+
+	it("validates default data", function()
+		expect(function()
+			Lapis.createCollection("bar", {
+				validate = function(data)
+					return false, "data is invalid"
 				end,
 			})
+		end).to.throw("data is invalid")
+	end)
 
-			expect(collection).to.be.ok()
-			expect(collection.name).to.equal("collection")
-		end)
+	it("throws when loading invalid data", function(context)
+		local collection = Lapis.createCollection("apples", DEFAULT_OPTIONS)
 
-		it("should throw when creating a duplicate collection", function()
-			Lapis.createCollection("duplicate", {
-				validate = function()
-					return true
+		context.write("apples", "a", { apples = "string" })
+
+		expect(function()
+			collection:openDocument("a"):expect()
+		end).to.throw("apples should be a number")
+	end)
+
+	it("openDocument throws when document is already locked", function(context)
+		local collection = Lapis.createCollection("abc", DEFAULT_OPTIONS)
+
+		context.write("abc", "abc", { apples = 2 }, 12345)
+
+		local promise = collection:openDocument("abc")
+
+		context.clock:tick(19)
+
+		expect(function()
+			promise:expect()
+		end).to.throw("Could not acquire lock")
+	end)
+
+	it("openDocument continuously tries to get the lock", function(context)
+		local collection = Lapis.createCollection("lock", DEFAULT_OPTIONS)
+
+		context.write("lock", "lock", { apples = 2 }, "lockId")
+
+		local promise = collection:openDocument("lock")
+
+		context.clock:tick(18)
+
+		expect(promise:getStatus()).to.equal(Promise.Status.Started)
+
+		-- Remove the lock.
+		context.write("lock", "lock", { apples = 2 })
+
+		context.clock:tick(1)
+
+		expect(function()
+			promise:expect()
+		end).never.to.throw()
+	end)
+
+	it("openDocument returns same promise/document", function(context)
+		local collection = Lapis.createCollection("def", DEFAULT_OPTIONS)
+
+		local promise1 = collection:openDocument("def")
+		local promise2 = collection:openDocument("def")
+
+		expect(promise1).to.equal(promise2)
+
+		Promise.all({ promise1, promise2 }):expect()
+
+		expect(promise1:expect()).to.equal(promise2:expect())
+	end)
+
+	it("openDocument returns a new promise when first load fails", function(context)
+		local collection = Lapis.createCollection("ghi", DEFAULT_OPTIONS)
+
+		context.dataStoreService.errors:addSimulatedErrors(20)
+
+		local promise1 = collection:openDocument("ghi")
+
+		context.clock:tick(19)
+
+		expect(function()
+			promise1:expect()
+		end).to.throw()
+
+		local promise2 = collection:openDocument("ghi")
+
+		expect(promise1).never.to.equal(promise2)
+
+		promise2:expect()
+	end)
+
+	it("migrates the data", function(context)
+		local collection = Lapis.createCollection("migration", {
+			validate = function(value)
+				return value == "newData", "value does not equal newData"
+			end,
+			defaultData = "newData",
+			migrations = {
+				function()
+					return "newData"
 				end,
-			})
+			},
+		})
 
-			expect(function()
-				Lapis.createCollection("duplicate")
-			end).to.throw("Collection `duplicate` already exists")
-		end)
+		context.write("migration", "migration", "data")
+
+		expect(function()
+			collection:openDocument("migration"):expect()
+		end).never.to.throw()
+	end)
+
+	it("closing and immediately opening should return a new document", function(context)
+		local collection = Lapis.createCollection("ccc", DEFAULT_OPTIONS)
+
+		local document = collection:openDocument("doc"):expect()
+
+		local close = document:close()
+		local open = collection:openDocument("doc")
+
+		context.clock:tick(6)
+
+		close:expect()
+
+		context.clock:tick(6)
+
+		local newDocument = open:expect()
+
+		expect(newDocument).never.to.equal(document)
 	end)
 end

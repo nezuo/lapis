@@ -1,23 +1,21 @@
 # Lapis
-A DataStore abstraction library for Roblox that offers:
+A Roblox DataStore abstraction that offers:
 - Caching
 - Session locking
-- Validators
+- Validation (rejects incorrect data)
 - Migrations
-- ~Compression~
 - Retries
 - Throttling
-- ~Auto-saving~
-- Immutability
 - Promise based API
+- Immutability
 
 This library was inspired by [Quicksave](https://github.com/evaera/Quicksave).
 
 ## Warning
-This library is not meant for production yet. There may be some breaking changes before the initial release.
-Auto-saving isn't yet implemented so session locking will not work as intended unless you implement your own auto-saving.
-The library is setup to support compression but I don't know much about the different compression methods. The method that Quicksave used didn't work with all UTF-8 encoded characters.
+This is not yet meant for production. Auto-saving is not implemented which is necessary for session locking.
+Without auto-saving, a session lock can be considered expired since it's not updated often.
 
 ## To do
 - Auto-saving
-- Compression
+- Save on game close
+- Tie a document to a player to save when they leave

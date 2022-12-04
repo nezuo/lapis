@@ -1,14 +1,63 @@
 local Collection = require(script.Collection)
 local Config = require(script.Config)
-local Error = require(script.Error)
 
 local usedCollections = {}
 
-local Lapis = {
-	Error = Error,
-	setGlobalConfig = Config.set,
-}
+--[=[
+	@class Lapis
+]=]
+local Lapis = {}
 
+--[=[
+	@interface ConfigValues
+	@within Lapis
+	.retryAttempts number? -- Max save/close retry attempts
+	.acquireLockAttempts number? -- Max lock acquire retry attempts
+	.acquireLockDelay number? -- Seconds between lock acquire attempts
+	.showRetryWarnings boolean? -- Show warning on retry
+	.dataStoreService (DataStoreService | table)? -- Useful for mocking DataStoreService, especially in a local place
+]=]
+
+--[=[
+	```lua
+	Lapis.setConfig({
+		retryAttempts = 10,
+		showRetryWarnings = false,
+	})
+	```
+
+	```lua
+	-- The default config values:
+	{
+		retryAttempts = 5,
+		acquireLockAttempts = 20,
+		acquireLockDelay = 1,
+		showRetryWarnings = true,
+		dataStoreService = DataStoreService,
+	}
+	```
+
+	@param values ConfigValues
+]=]
+function Lapis.setConfig(values)
+	Config.set(values)
+end
+
+--[=[
+	@interface CollectionOptions
+	@within Lapis
+	.validate (any) -> (boolean, string?) -- Takes a document's data and returns a success boolean and an error message if it fails.
+	.defaultData any
+	.migrations { (any) -> any } -- Migrations take old data and return new data. Order is first to last.
+]=]
+
+--[=[
+	Creates a [Collection].
+
+	@param name string
+	@param options CollectionOptions
+	@return Collection
+]=]
 function Lapis.createCollection(name, options)
 	if usedCollections[name] then
 		error(string.format("Collection `%s` already exists", name))

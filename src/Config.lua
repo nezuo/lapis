@@ -1,38 +1,27 @@
 local DataStoreService = game:GetService("DataStoreService")
 
-local currentConfig = {
+local config = {
 	retryAttempts = 5,
+	acquireLockAttempts = 20,
+	acquireLockDelay = 1,
 	showRetryWarnings = true,
 	dataStoreService = DataStoreService,
 }
 
-local validKeys = {}
-for key in currentConfig do
-	table.insert(validKeys, key)
-end
-
-local function makeInvalidKeyError(key)
-	return string.format("Invalid config key `%s`. Valid keys are: %s", tostring(key), table.concat(validKeys, ", "))
-end
-
 local Config = {}
 
-function Config.set(configValues)
-	for key, value in configValues do
-		if currentConfig[key] == nil then
-			error(makeInvalidKeyError(key))
-		end
-
-		currentConfig[key] = value
-	end
+function Config.get(key)
+	return config[key]
 end
 
-function Config.get(key)
-	if currentConfig[key] == nil then
-		error(makeInvalidKeyError(key))
-	end
+function Config.set(values)
+	for key, value in values do
+		if config[key] == nil then
+			error(string.format("Invalid config key `%s`", tostring(key)))
+		end
 
-	return currentConfig[key]
+		config[key] = value
+	end
 end
 
 return Config

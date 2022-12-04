@@ -19,9 +19,6 @@
       },
       "ServerPackages": {
         "$path": "../ServerPackages"
-      },
-      "Tasks": {
-        "$path": "Tasks.lua"
       }
     },
     "ServerScriptService": {

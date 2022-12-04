@@ -1,78 +1,107 @@
+local Compression = require(script.Parent.Compression)
 local Data = require(script.Parent.Data)
-local Error = require(script.Parent.Error)
-local Promise = require(script.Parent.Parent.Promise)
+local freezeDeep = require(script.Parent.freezeDeep)
 
+--[=[
+	@class Document
+]=]
 local Document = {}
 Document.__index = Document
 
-function Document.new(collection, name, data, lockId)
+function Document.new(collection, key, validate, lockId, data)
 	return setmetatable({
-		_data = data,
-		_open = true,
-		_lockId = lockId,
 		collection = collection,
-		name = name,
+		key = key,
+		validate = validate,
+		lockId = lockId,
+		data = data,
+		closed = false,
 	}, Document)
 end
 
-function Document:_isLockInconsistent(value)
-	return value.lockId ~= self._lockId
+--[=[
+	Returns the document's data.
+
+	@return any
+]=]
+function Document:read()
+	return self.data
 end
 
-function Document:close()
-	assert(self._open, "Cannot close a closed document")
+--[=[
+	Writes the document's data.
 
-	self._open = false
+	:::warning
+	Throws an error if the document was closed or if the data is invalid.
+	:::
 
-	return Promise.try(Data.update, self.collection, self.name, function(value)
-		if self:_isLockInconsistent(value) then
-			return nil
+	@param data any
+]=]
+function Document:write(data)
+	assert(not self.closed, "Cannot write to a closed document")
+	assert(self.validate(data))
+
+	freezeDeep(data)
+
+	self.data = data
+end
+
+--[=[
+	Saves the document's data. If the save is throttled and you call it multiple times, it will save only once with the latest data.
+
+	:::warning
+	Throws an error if the document was closed.
+	:::
+
+	@return Promise<()>
+]=]
+function Document:save()
+	assert(not self.closed, "Cannot save a closed document")
+
+	return Data.save(self.collection.dataStore, self.key, function(value)
+		if value.lockId ~= self.lockId then
+			error("The session lock was stolen")
 		end
 
-		value.updatedAt = os.time()
-		value.lockId = nil
-		value.data = self._data.data
+		local scheme, compressed = Compression.compress(self.data)
+
+		value.compressionScheme = scheme
+		value.data = compressed
 
 		return value
-	end):finally(function()
-		self.collection:_removeDocument(self.name)
 	end)
 end
 
-function Document:read()
-	return self._data.data
-end
+--[=[
+	Saves the document and removes the session lock. The document is unusable after calling. If a save is currently in
+	progress it will close the document instead.
 
-function Document:save()
-	assert(self._open, "Cannot save a closed document")
+	:::warning
+	Throws an error if the document was closed.
+	:::
 
-	return Promise.new(function(resolve, reject)
-		self._data = Data.update(self.collection, self.name, function(value)
-			if self:_isLockInconsistent(value) then
-				reject(Error.new(Error.Kind.InconsistentLock, "The lock was changed after it was acquired"))
-				return nil
-			end
+	@return Promise<()>
+]=]
+function Document:close()
+	assert(not self.closed, "Cannot close a closed document")
 
-			value.updatedAt = os.time()
-			value.data = self._data.data
+	self.closed = true
 
-			return value
-		end)
+	self.collection.openDocuments[self.key] = nil
 
-		resolve()
+	return Data.save(self.collection.dataStore, self.key, function(value)
+		if value.lockId ~= self.lockId then
+			error("The session lock was stolen")
+		end
+
+		local scheme, compressed = Compression.compress(self.data)
+
+		value.compressionScheme = scheme
+		value.data = compressed
+		value.lockId = nil
+
+		return value
 	end)
-end
-
-function Document:write(data)
-	assert(self._open, "Cannot write to a closed document")
-
-	if self._data.data == data then
-		error("Cannot write to a document mutably")
-	end
-
-	assert(self.collection.validate(data))
-
-	self._data.data = data
 end
 
 return Document
