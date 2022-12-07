@@ -46,7 +46,7 @@ end
 --[=[
 	@interface CollectionOptions
 	@within Lapis
-	.validate (any) -> (boolean, string?) -- Takes a document's data and returns a success boolean and an error message if it fails.
+	.validate (any) -> true | (false, string) -- Takes a document's data and returns true on success or false and an error on fail.
 	.defaultData any
 	.migrations { (any) -> any } -- Migrations take old data and return new data. Order is first to last.
 ]=]

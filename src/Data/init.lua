@@ -50,9 +50,8 @@ function Data.load(dataStore, key, transform)
 
 			return throttleUpdate(dataStore, key, transform, attempts, delay)
 		end)
-		:andThen(function(...)
+		:tap(function()
 			addWriteCooldown(dataStore, key)
-			return ...
 		end)
 end
 
@@ -92,6 +91,10 @@ function Data.save(dataStore, key, transform)
 
 		return pendingSave.promise
 	end
+end
+
+function Data.getPendingSaves()
+	return pendingSaves
 end
 
 return Data

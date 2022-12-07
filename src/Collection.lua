@@ -1,5 +1,6 @@
 local HttpService = game:GetService("HttpService")
 
+local AutoSave = require(script.Parent.AutoSave)
 local Compression = require(script.Parent.Compression)
 local Config = require(script.Parent.Config)
 local Data = require(script.Parent.Data)
@@ -72,7 +73,11 @@ function Collection:openDocument(key)
 			local ok, message = self.options.validate(data)
 
 			if ok then
-				return Document.new(self, key, self.options.validate, lockId, data)
+				local document = Document.new(self, key, self.options.validate, lockId, data)
+
+				AutoSave.addDocument(document)
+
+				return document
 			else
 				return Promise.reject(message)
 			end

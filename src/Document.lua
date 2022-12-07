@@ -1,3 +1,4 @@
+local AutoSave = require(script.Parent.AutoSave)
 local Compression = require(script.Parent.Compression)
 local Data = require(script.Parent.Data)
 local freezeDeep = require(script.Parent.freezeDeep)
@@ -88,6 +89,8 @@ function Document:close()
 	self.closed = true
 
 	self.collection.openDocuments[self.key] = nil
+
+	AutoSave.removeDocument(self)
 
 	return Data.save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
