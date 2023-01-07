@@ -3,7 +3,7 @@ local RunService = game:GetService("RunService")
 local Data = require(script.Parent.Data)
 local Promise = require(script.Parent.Parent.Promise)
 
-local UPDATE_INTERVAL = 5
+local UPDATE_INTERVAL = 5 * 60
 
 local documents = {}
 
@@ -19,6 +19,10 @@ local function start()
 		end
 	end)
 
+	if RunService:IsStudio() then
+		return
+	end
+
 	game:BindToClose(function()
 		while #documents > 0 do
 			documents[#documents]:close()
@@ -26,7 +30,7 @@ local function start()
 
 		local promises = {}
 
-		-- We want to wait for documents that may have closed right before BindToClose was called.
+		-- This will wait for documents that closed before BindToClose was called.
 		for _, pendingSaves in Data.getPendingSaves() do
 			for _, pendingSave in pendingSaves do
 				table.insert(promises, pendingSave.promise)
