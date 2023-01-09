@@ -61,7 +61,7 @@ function Document:save()
 
 	return Data.save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
-			error("The session lock was stolen")
+			return false, "The session lock was stolen"
 		end
 
 		local scheme, compressed = Compression.compress(self.data)
@@ -69,7 +69,7 @@ function Document:save()
 		value.compressionScheme = scheme
 		value.data = compressed
 
-		return value
+		return true, value
 	end)
 end
 
@@ -94,7 +94,7 @@ function Document:close()
 
 	return Data.save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
-			error("The session lock was stolen")
+			return false, "The session lock was stolen"
 		end
 
 		local scheme, compressed = Compression.compress(self.data)
@@ -103,7 +103,7 @@ function Document:close()
 		value.data = compressed
 		value.lockId = nil
 
-		return value
+		return true, value
 	end)
 end
 

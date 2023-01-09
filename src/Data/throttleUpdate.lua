@@ -18,20 +18,20 @@ local function startQueue()
 					task.wait()
 				end
 
-				-- UpdateAsync won't throw an error when the transform function errors. We need to catch this error so we can fail.
-				local success, message
+				local success, transformed
+
 				local data = request.dataStore:UpdateAsync(request.key, function(...)
-					success, message = pcall(request.transform, ...)
+					success, transformed = request.transform(...)
 
 					if not success then
-						error(message)
+						return nil
+					else
+						return transformed
 					end
-
-					return message
 				end)
 
 				if not success then
-					error(message)
+					error(transformed)
 				end
 
 				return data

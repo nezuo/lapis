@@ -46,28 +46,30 @@ function Collection:openDocument(key)
 
 		local promise = Data.load(self.dataStore, key, function(value, keyInfo)
 			if value == nil then
-				return {
-					compressionScheme = "None",
-					migrationVersion = #self.options.migrations,
-					lockId = lockId,
-					data = self.options.defaultData,
-				}
+				return true,
+					{
+						compressionScheme = "None",
+						migrationVersion = #self.options.migrations,
+						lockId = lockId,
+						data = self.options.defaultData,
+					}
 			end
 
 			if value.lockId ~= nil and (UnixTimestampMillis.get() - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE then
-				error("Could not acquire lock")
+				return false, "Could not acquire lock"
 			end
 
 			local decompressed = Compression.decompress(value.compressionScheme, value.data)
 			local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, decompressed)
 			local scheme, compressed = Compression.compress(migrated)
 
-			return {
-				compressionScheme = scheme,
-				migrationVersion = #self.options.migrations,
-				lockId = lockId,
-				data = compressed,
-			}
+			return true,
+				{
+					compressionScheme = scheme,
+					migrationVersion = #self.options.migrations,
+					lockId = lockId,
+					data = compressed,
+				}
 		end):andThen(function(value)
 			local data = Compression.decompress(value.compressionScheme, value.data)
 			local ok, message = self.options.validate(data)
