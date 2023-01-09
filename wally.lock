@@ -9,12 +9,12 @@ dependencies = []
 
 [[package]]
 name = "nezuo/data-store-service-mock"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = []
 
 [[package]]
 name = "nezuo/lapis"
-version = "0.1.0"
+version = "0.1.5-beta"
 dependencies = [["Promise", "evaera/promise@4.0.0"], ["TestEZ", "roblox/testez@0.4.1"]]
 
 [[package]]

@@ -113,7 +113,7 @@ return function()
 	it("validates default data", function()
 		expect(function()
 			Lapis.createCollection("bar", {
-				validate = function(data)
+				validate = function()
 					return false, "data is invalid"
 				end,
 			})
@@ -165,7 +165,7 @@ return function()
 		end).never.to.throw()
 	end)
 
-	it("openDocument returns same promise/document", function(context)
+	it("openDocument returns same promise/document", function()
 		local collection = Lapis.createCollection("def", DEFAULT_OPTIONS)
 
 		local promise1 = collection:openDocument("def")

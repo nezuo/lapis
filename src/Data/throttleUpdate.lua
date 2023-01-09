@@ -18,7 +18,23 @@ local function startQueue()
 					task.wait()
 				end
 
-				return request.dataStore:UpdateAsync(unpack(request.arguments))
+				-- UpdateAsync won't throw an error when the transform function errors. We need to catch this error so we can fail.
+				local success, message
+				local data = request.dataStore:UpdateAsync(request.key, function(...)
+					success, message = pcall(request.transform, ...)
+
+					if not success then
+						error(message)
+					end
+
+					return message
+				end)
+
+				if not success then
+					error(message)
+				end
+
+				return data
 			end)
 
 			if ok then
@@ -33,12 +49,11 @@ local function startQueue()
 end
 
 local function throttleUpdate(dataStore, key, transform, retryAttempts, retryDelay)
-	local arguments = { key, transform }
-
 	return Promise.new(function(resolve, reject)
 		local request = {
 			dataStore = dataStore,
-			arguments = arguments,
+			key = key,
+			transform = transform,
 			attempts = retryAttempts,
 			delay = retryDelay,
 			resolve = resolve,

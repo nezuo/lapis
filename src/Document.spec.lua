@@ -96,7 +96,7 @@ return function()
 		promise:expect()
 	end)
 
-	it("loads with default data", function(context)
+	it("loads with default data", function()
 		local document = Lapis.createCollection("o", DEFAULT_OPTIONS):openDocument("a"):expect()
 
 		expect(document:read().foo).to.equal("bar")
