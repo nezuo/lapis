@@ -19,10 +19,6 @@ local function start()
 		end
 	end)
 
-	if RunService:IsStudio() then
-		return
-	end
-
 	game:BindToClose(function()
 		while #documents > 0 do
 			documents[#documents]:close()
