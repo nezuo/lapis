@@ -7,21 +7,25 @@ local WRITE_COOLDOWN = 6
 local writeCooldowns = {}
 local pendingSaves = {}
 
+local function removeWriteCooldown(dataStore, key)
+	writeCooldowns[dataStore][key] = nil
+
+	if next(writeCooldowns[dataStore]) == nil then
+		writeCooldowns[dataStore] = nil
+	end
+end
+
 local function addWriteCooldown(dataStore, key)
-	local promise = Promise.delay(WRITE_COOLDOWN):finally(function()
-		writeCooldowns[dataStore][key] = nil
+	local cooldown = Promise.delay(WRITE_COOLDOWN):finallyCall(removeWriteCooldown, dataStore, key)
 
-		if next(writeCooldowns[dataStore]) == nil then
-			writeCooldowns[dataStore] = nil
-		end
-	end)
-
-	if promise:getStatus() == Promise.Status.Started then
+	-- This condition prevents adding the promise to writeCooldowns after removeWriteCooldown is called.
+	-- It's necessary because Promise.delay can resolve instantly in tests.
+	if cooldown:getStatus() == Promise.Status.Started then
 		if writeCooldowns[dataStore] == nil then
 			writeCooldowns[dataStore] = {}
 		end
 
-		writeCooldowns[dataStore][key] = promise
+		writeCooldowns[dataStore][key] = cooldown
 	end
 end
 
