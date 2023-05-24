@@ -1,0 +1,25 @@
+{
+  "name": "example",
+  "tree": {
+    "$className": "DataModel",
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    },
+    "ReplicatedStorage": {
+      "Packages": {
+        "$path": "Packages",
+
+        "Lapis": {
+          "$path": "../"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    }
+  }
+}

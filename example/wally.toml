@@ -1,0 +1,9 @@
+[package]
+name = "lapis/example"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+t = "osyrisrblx/t@3.0.0"
+Promise = "evaera/promise@4.0.0"

@@ -78,7 +78,7 @@ return function()
 			Lapis.setConfig({
 				foo = true,
 			})
-		end).to.throw("Invalid config key `foo`")
+		end).to.throw('Invalid config key "foo"')
 	end)
 
 	it("throws when creating a duplicate collection", function()
@@ -86,7 +86,7 @@ return function()
 
 		expect(function()
 			Lapis.createCollection("foo", DEFAULT_OPTIONS)
-		end).to.throw("Collection `foo` already exists")
+		end).to.throw('Collection "foo" already exists')
 	end)
 
 	it("freezes default data", function()
@@ -126,16 +126,16 @@ return function()
 		context.write("apples", "a", { apples = "string" })
 
 		expect(function()
-			collection:openDocument("a"):expect()
+			collection:load("a"):expect()
 		end).to.throw("apples should be a number")
 	end)
 
-	it("openDocument throws when document is already locked", function(context)
+	it("load throws when document is already locked", function(context)
 		local collection = Lapis.createCollection("abc", DEFAULT_OPTIONS)
 
 		context.write("abc", "abc", { apples = 2 }, 12345)
 
-		local promise = collection:openDocument("abc")
+		local promise = collection:load("abc")
 
 		context.clock:tick(19)
 
@@ -144,12 +144,12 @@ return function()
 		end).to.throw("Could not acquire lock")
 	end)
 
-	it("openDocument continuously tries to get the lock", function(context)
+	it("load continuously tries to get the lock", function(context)
 		local collection = Lapis.createCollection("lock", DEFAULT_OPTIONS)
 
 		context.write("lock", "lock", { apples = 2 }, "lockId")
 
-		local promise = collection:openDocument("lock")
+		local promise = collection:load("lock")
 
 		context.clock:tick(18)
 
@@ -165,11 +165,11 @@ return function()
 		end).never.to.throw()
 	end)
 
-	it("openDocument returns same promise/document", function()
+	it("load returns same promise/document", function()
 		local collection = Lapis.createCollection("def", DEFAULT_OPTIONS)
 
-		local promise1 = collection:openDocument("def")
-		local promise2 = collection:openDocument("def")
+		local promise1 = collection:load("def")
+		local promise2 = collection:load("def")
 
 		expect(promise1).to.equal(promise2)
 
@@ -178,12 +178,12 @@ return function()
 		expect(promise1:expect()).to.equal(promise2:expect())
 	end)
 
-	it("openDocument returns a new promise when first load fails", function(context)
+	it("load returns a new promise when first load fails", function(context)
 		local collection = Lapis.createCollection("ghi", DEFAULT_OPTIONS)
 
 		context.dataStoreService.errors:addSimulatedErrors(20)
 
-		local promise1 = collection:openDocument("ghi")
+		local promise1 = collection:load("ghi")
 
 		context.clock:tick(19)
 
@@ -191,7 +191,7 @@ return function()
 			promise1:expect()
 		end).to.throw()
 
-		local promise2 = collection:openDocument("ghi")
+		local promise2 = collection:load("ghi")
 
 		expect(promise1).never.to.equal(promise2)
 
@@ -214,17 +214,17 @@ return function()
 		context.write("migration", "migration", "data")
 
 		expect(function()
-			collection:openDocument("migration"):expect()
+			collection:load("migration"):expect()
 		end).never.to.throw()
 	end)
 
 	it("closing and immediately opening should return a new document", function(context)
 		local collection = Lapis.createCollection("ccc", DEFAULT_OPTIONS)
 
-		local document = collection:openDocument("doc"):expect()
+		local document = collection:load("doc"):expect()
 
 		local close = document:close()
-		local open = collection:openDocument("doc")
+		local open = collection:load("doc")
 
 		context.clock:tick(6)
 

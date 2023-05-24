@@ -40,7 +40,7 @@ end
 	@param key string
 	@return Promise<Document>
 ]=]
-function Collection:openDocument(key)
+function Collection:load(key)
 	if self.openDocuments[key] == nil then
 		local lockId = HttpService:GenerateGUID(false)
 

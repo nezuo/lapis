@@ -12,7 +12,7 @@ local DEFAULT_OPTIONS = {
 
 return function()
 	it("combines save and close requests", function(context)
-		local document = Lapis.createCollection("fff", DEFAULT_OPTIONS):openDocument("doc"):expect()
+		local document = Lapis.createCollection("fff", DEFAULT_OPTIONS):load("doc"):expect()
 
 		document:write({
 			foo = "updated value",
@@ -36,7 +36,7 @@ return function()
 	end)
 
 	it("saves data", function(context)
-		local document = Lapis.createCollection("12345", DEFAULT_OPTIONS):openDocument("doc"):expect()
+		local document = Lapis.createCollection("12345", DEFAULT_OPTIONS):load("doc"):expect()
 
 		-- Finish the write cooldown from opening the document.
 		context.clock:tick(6)
@@ -55,7 +55,7 @@ return function()
 	end)
 
 	it("writes the data", function()
-		local document = Lapis.createCollection("1", DEFAULT_OPTIONS):openDocument("doc"):expect()
+		local document = Lapis.createCollection("1", DEFAULT_OPTIONS):load("doc"):expect()
 
 		document:write({
 			foo = "baz",
@@ -65,7 +65,7 @@ return function()
 	end)
 
 	it("write throws if data doesn't validate", function()
-		local document = Lapis.createCollection("2", DEFAULT_OPTIONS):openDocument("doc"):expect()
+		local document = Lapis.createCollection("2", DEFAULT_OPTIONS):load("doc"):expect()
 
 		expect(function()
 			document:write({
@@ -75,7 +75,7 @@ return function()
 	end)
 
 	it("throws when writing/saving/closing a closed document", function(context)
-		local document = Lapis.createCollection("5", DEFAULT_OPTIONS):openDocument("doc"):expect()
+		local document = Lapis.createCollection("5", DEFAULT_OPTIONS):load("doc"):expect()
 
 		context.clock:tick(6)
 
@@ -97,7 +97,7 @@ return function()
 	end)
 
 	it("loads with default data", function()
-		local document = Lapis.createCollection("o", DEFAULT_OPTIONS):openDocument("a"):expect()
+		local document = Lapis.createCollection("o", DEFAULT_OPTIONS):load("a"):expect()
 
 		expect(document:read().foo).to.equal("bar")
 	end)
@@ -109,7 +109,7 @@ return function()
 			foo = "existing",
 		})
 
-		local document = collection:openDocument("xyz"):expect()
+		local document = collection:load("xyz"):expect()
 
 		expect(document:read().foo).to.equal("existing")
 	end)
@@ -117,7 +117,7 @@ return function()
 	it("doesn't save data when the lock was stolen", function(context)
 		local collection = Lapis.createCollection("hi", DEFAULT_OPTIONS)
 
-		local document = collection:openDocument("hi"):expect()
+		local document = collection:load("hi"):expect()
 
 		context.write("hi", "hi", {
 			foo = "stolen",
@@ -145,7 +145,7 @@ return function()
 	end)
 
 	it("doesn't throw when the budget is exhausted", function(context)
-		local document = Lapis.createCollection("bye", DEFAULT_OPTIONS):openDocument("bye"):expect()
+		local document = Lapis.createCollection("bye", DEFAULT_OPTIONS):load("bye"):expect()
 
 		context.clock:tick(6)
 

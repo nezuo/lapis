@@ -9,6 +9,8 @@
 /Packages
 /ServerPackages
 
+/example/Packages
+
 /sourcemap.json
 
 /build
