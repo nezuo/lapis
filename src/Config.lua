@@ -1,9 +1,9 @@
 local DataStoreService = game:GetService("DataStoreService")
 
 local config = {
-	retryAttempts = 5,
-	acquireLockAttempts = 20,
-	acquireLockDelay = 1,
+	saveAttempts = 5,
+	loadAttempts = 20,
+	loadRetryDelay = 1,
 	showRetryWarnings = true,
 	dataStoreService = DataStoreService,
 }
@@ -17,7 +17,7 @@ end
 function Config.set(values)
 	for key, value in values do
 		if config[key] == nil then
-			error(string.format("Invalid config key `%s`", tostring(key)))
+			error(`Invalid config key "{tostring(key)}"`)
 		end
 
 		config[key] = value

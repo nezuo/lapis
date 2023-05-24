@@ -11,9 +11,9 @@ local Lapis = {}
 --[=[
 	@interface ConfigValues
 	@within Lapis
-	.retryAttempts number? -- Max save/close retry attempts
-	.acquireLockAttempts number? -- Max lock acquire retry attempts
-	.acquireLockDelay number? -- Seconds between lock acquire attempts
+	.saveAttempts number? -- Max save/close retry attempts
+	.loadAttempts number? -- Max load retry attempts
+	.loadRetryDelay number? -- Seconds between load attempts
 	.showRetryWarnings boolean? -- Show warning on retry
 	.dataStoreService (DataStoreService | table)? -- Useful for mocking DataStoreService, especially in a local place
 ]=]
@@ -21,7 +21,7 @@ local Lapis = {}
 --[=[
 	```lua
 	Lapis.setConfig({
-		retryAttempts = 10,
+		saveAttempts = 10,
 		showRetryWarnings = false,
 	})
 	```
@@ -29,9 +29,9 @@ local Lapis = {}
 	```lua
 	-- The default config values:
 	{
-		retryAttempts = 5,
-		acquireLockAttempts = 20,
-		acquireLockDelay = 1,
+		saveAttempts = 5,
+		loadAttempts = 20,
+		loadRetryDelay = 1,
 		showRetryWarnings = true,
 		dataStoreService = DataStoreService,
 	}
@@ -60,7 +60,7 @@ end
 ]=]
 function Lapis.createCollection(name, options)
 	if usedCollections[name] then
-		error(string.format("Collection `%s` already exists", name))
+		error(`Collection "{name}" already exists`)
 	end
 
 	usedCollections[name] = true

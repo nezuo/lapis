@@ -10,11 +10,11 @@ local function retry(attempts, delay, callback)
 		end
 
 		if attempt == attempts then
-			return false, string.format("DataStoreFailure(%s)", value)
+			return false, `DataStoreFailure({value})`
 		end
 
 		if Config.get("showRetryWarnings") then
-			warn(string.format("DataStore operation failed. Retrying...\nError: %s", value))
+			warn(`DataStore operation failed. Retrying...\nError: {value}`)
 		end
 
 		if delay ~= nil then

@@ -37,6 +37,8 @@ local function start()
 	end)
 end
 
+start()
+
 local AutoSave = {}
 
 function AutoSave.addDocument(document)
@@ -48,7 +50,5 @@ function AutoSave.removeDocument(document)
 
 	table.remove(documents, index)
 end
-
-start()
 
 return AutoSave
