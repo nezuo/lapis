@@ -218,6 +218,28 @@ return function()
 		end).never.to.throw()
 	end)
 
+	it("throws when migration version is ahead of latest version", function(context)
+		local collection = Lapis.createCollection("collection", {
+			validate = function()
+				return true
+			end,
+			defaultData = "a",
+		})
+
+		local dataStore = context.dataStoreService.dataStores.collection.global
+		dataStore:write("document", {
+			compressionScheme = "None",
+			migrationVersion = 1,
+			data = "b",
+		})
+
+		local promise = collection:load("document")
+
+		expect(function()
+			promise:expect()
+		end).to.throw("Saved migration version ahead of latest version")
+	end)
+
 	it("closing and immediately opening should return a new document", function(context)
 		local collection = Lapis.createCollection("ccc", DEFAULT_OPTIONS)
 
