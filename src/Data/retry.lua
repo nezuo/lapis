@@ -3,13 +3,13 @@ local Promise = require(script.Parent.Parent.Parent.Promise)
 
 local function retry(attempts, delay, callback)
 	for attempt = 1, attempts do
-		local ok, value = pcall(callback)
+		local result, value = callback()
 
-		if ok then
+		if result == "succeed" then
 			return true, value
-		end
-
-		if attempt == attempts then
+		elseif result == "fail" then
+			return false, value
+		elseif attempt == attempts then
 			return false, `DataStoreFailure({value})`
 		end
 

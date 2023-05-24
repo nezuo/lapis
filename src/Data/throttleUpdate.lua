@@ -18,23 +18,25 @@ local function startQueue()
 					task.wait()
 				end
 
-				local success, transformed
+				local result, transformed
 
-				local data = request.dataStore:UpdateAsync(request.key, function(...)
-					success, transformed = request.transform(...)
+				local updateOk, err = pcall(function()
+					request.dataStore:UpdateAsync(request.key, function(...)
+						result, transformed = request.transform(...)
 
-					if not success then
-						return nil
-					else
-						return transformed
-					end
+						if result == "succeed" then
+							return transformed
+						else
+							return nil
+						end
+					end)
 				end)
 
-				if not success then
-					error(transformed)
+				if not updateOk then
+					return "retry", err
 				end
 
-				return data
+				return result, transformed
 			end)
 
 			if ok then

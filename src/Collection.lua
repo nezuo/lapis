@@ -47,7 +47,7 @@ function Collection:load(key)
 		self.openDocuments[key] = Data
 			.load(self.dataStore, key, function(value, keyInfo)
 				if value == nil then
-					return true,
+					return "succeed",
 						{
 							compressionScheme = "None",
 							migrationVersion = #self.options.migrations,
@@ -56,15 +56,19 @@ function Collection:load(key)
 						}
 				end
 
+				if value.migrationVersion > #self.options.migrations then
+					return "fail", "Saved migration version ahead of latest version"
+				end
+
 				if value.lockId ~= nil and (UnixTimestampMillis.get() - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE then
-					return false, "Could not acquire lock"
+					return "retry", "Could not acquire lock"
 				end
 
 				local decompressed = Compression.decompress(value.compressionScheme, value.data)
 				local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, decompressed)
 				local scheme, compressed = Compression.compress(migrated)
 
-				return true,
+				return "succeed",
 					{
 						compressionScheme = scheme,
 						migrationVersion = #self.options.migrations,
@@ -74,17 +78,17 @@ function Collection:load(key)
 			end)
 			:andThen(function(value)
 				local data = Compression.decompress(value.compressionScheme, value.data)
+
 				local ok, message = self.options.validate(data)
-
-				if ok then
-					local document = Document.new(self, key, self.options.validate, lockId, data)
-
-					AutoSave.addDocument(document)
-
-					return document
-				else
+				if not ok then
 					return Promise.reject(message)
 				end
+
+				local document = Document.new(self, key, self.options.validate, lockId, data)
+
+				AutoSave.addDocument(document)
+
+				return document
 			end)
 			-- finally is used instead of catch so it doesn't handle rejection.
 			:finally(function(status)
