@@ -1,6 +1,6 @@
 {
   "name": "lapis",
   "tree": {
-    "$path": "src"
+    "$path": "out"
   }
 }
