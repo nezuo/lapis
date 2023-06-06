@@ -7,7 +7,7 @@
 *.rbxl.lock
 
 /Packages
-/ServerPackages
+/DevPackages
 
 /example/Packages
 

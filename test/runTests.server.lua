@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local TestEZ = require(ReplicatedStorage.Packages.TestEZ)
+local TestEZ = require(ReplicatedStorage.DevPackages.TestEZ)
 
 local startedAt = os.clock()
 

@@ -6,7 +6,7 @@ realm = "server"
 
 [dependencies]
 Promise = "evaera/promise@4.0.0"
-TestEZ = "roblox/testez@0.4.1"
 
-[server-dependencies]
+[dev-dependencies]
+TestEZ = "roblox/testez@0.4.1"
 DataStoreServiceMock = "nezuo/data-store-service-mock@0.2.4"
