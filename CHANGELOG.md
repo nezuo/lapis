@@ -1,6 +1,7 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Move TestEZ and DataStoreServiceMock to dev dependencies
 
 ## 0.2.0 - May 24, 2023
 * Renamed `Collection:openDocument` to `Collection:load`
