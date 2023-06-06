@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Clock = require(ReplicatedStorage.Clock)
-local DataStoreServiceMock = require(ReplicatedStorage.ServerPackages.DataStoreServiceMock)
+local DataStoreServiceMock = require(ReplicatedStorage.DevPackages.DataStoreServiceMock)
 local Lapis = require(script.Parent)
 local Promise = require(script.Parent.Parent.Promise)
 local UnixTimestampMillis = require(script.Parent.UnixTimestampMillis)
