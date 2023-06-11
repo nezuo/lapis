@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.1 - June 10, 2023
 * Move TestEZ and DataStoreServiceMock to dev dependencies
 * Remove unused files from published package
 
