@@ -22,6 +22,14 @@ local documents = {}
 Players.PlayerAdded:Connect(function(player)
 	local ok, document = collection:load(`Player{player.UserId}`):await()
 
+	if player.Parent == nil then
+		if ok then
+			document:close()
+		end
+
+		return
+	end
+
 	if ok then
 		local old = document:read()
 
@@ -34,6 +42,8 @@ Players.PlayerAdded:Connect(function(player)
 		})
 
 		documents[player] = document
+	else
+		warn(`Player {player.Name}'s data failed to load`)
 	end
 end)
 
