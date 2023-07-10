@@ -1,26 +1,31 @@
 local DataStoreService = game:GetService("DataStoreService")
 
-local config = {
-	saveAttempts = 5,
-	loadAttempts = 20,
-	loadRetryDelay = 1,
-	showRetryWarnings = true,
-	dataStoreService = DataStoreService,
-}
-
 local Config = {}
+Config.__index = Config
 
-function Config.get(key)
-	return config[key]
+function Config.new()
+	return setmetatable({
+		config = {
+			saveAttempts = 5,
+			loadAttempts = 20,
+			loadRetryDelay = 1,
+			showRetryWarnings = true,
+			dataStoreService = DataStoreService,
+		},
+	}, Config)
 end
 
-function Config.set(values)
+function Config:get(key)
+	return self.config[key]
+end
+
+function Config:set(values)
 	for key, value in values do
-		if config[key] == nil then
+		if self.config[key] == nil then
 			error(`Invalid config key "{tostring(key)}"`)
 		end
 
-		config[key] = value
+		self.config[key] = value
 	end
 end
 

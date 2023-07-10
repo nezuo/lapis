@@ -1,6 +1,4 @@
-local AutoSave = require(script.Parent.AutoSave)
 local Compression = require(script.Parent.Compression)
-local Data = require(script.Parent.Data)
 local freezeDeep = require(script.Parent.freezeDeep)
 
 --[=[
@@ -59,7 +57,7 @@ end
 function Document:save()
 	assert(not self.closed, "Cannot save a closed document")
 
-	return Data.save(self.collection.dataStore, self.key, function(value)
+	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
 			return "fail", "The session lock was stolen"
 		end
@@ -90,9 +88,9 @@ function Document:close()
 
 	self.collection.openDocuments[self.key] = nil
 
-	AutoSave.removeDocument(self)
+	self.collection.autoSave:removeDocument(self)
 
-	return Data.save(self.collection.dataStore, self.key, function(value)
+	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
 			return "fail", "The session lock was stolen"
 		end

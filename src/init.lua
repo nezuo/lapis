@@ -1,7 +1,6 @@
-local Collection = require(script.Collection)
-local Config = require(script.Config)
+local Internal = require(script.Internal)
 
-local usedCollections = {}
+local internal = Internal.new(true)
 
 --[=[
 	@class Lapis
@@ -40,7 +39,7 @@ local Lapis = {}
 	@param values ConfigValues
 ]=]
 function Lapis.setConfig(values)
-	Config.set(values)
+	internal.setConfig(values)
 end
 
 --[=[
@@ -59,13 +58,7 @@ end
 	@return Collection
 ]=]
 function Lapis.createCollection(name, options)
-	if usedCollections[name] then
-		error(`Collection "{name}" already exists`)
-	end
-
-	usedCollections[name] = true
-
-	return Collection.new(name, options)
+	internal.createCollection(name, options)
 end
 
 return Lapis
