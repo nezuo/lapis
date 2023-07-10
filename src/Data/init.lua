@@ -1,6 +1,5 @@
 local Promise = require(script.Parent.Parent.Promise)
 local Throttle = require(script.Throttle)
-local WriteCooldowns = require(script.WriteCooldowns)
 
 local Data = {}
 Data.__index = Data
@@ -8,7 +7,6 @@ Data.__index = Data
 function Data.new(config)
 	return setmetatable({
 		config = config,
-		writeCooldowns = WriteCooldowns.new(),
 		throttle = Throttle.new(config),
 		pendingSaves = {},
 	}, Data)
@@ -23,19 +21,12 @@ function Data:getPendingSave(dataStore, key)
 end
 
 function Data:load(dataStore, key, transform)
-	return self:getPendingSave(dataStore, key)
-		:andThen(function()
-			return self.writeCooldowns:getWriteCooldown(dataStore, key)
-		end)
-		:andThen(function()
-			local attempts = self.config:get("loadAttempts")
-			local retryDelay = self.config:get("loadRetryDelay")
+	return self:getPendingSave(dataStore, key):andThen(function()
+		local attempts = self.config:get("loadAttempts")
+		local retryDelay = self.config:get("loadRetryDelay")
 
-			return self.throttle:updateAsync(dataStore, key, transform, attempts, retryDelay)
-		end)
-		:tap(function()
-			self.writeCooldowns:addWriteCooldown(dataStore, key)
-		end)
+		return self.throttle:updateAsync(dataStore, key, transform, attempts, retryDelay)
+	end)
 end
 
 function Data:save(dataStore, key, transform)
@@ -52,18 +43,12 @@ function Data:save(dataStore, key, transform)
 	else
 		self.pendingSaves[dataStore][key] = { transform = transform }
 
-		local promise = self.writeCooldowns
-			:getWriteCooldown(dataStore, key)
-			:andThen(function()
-				local attempts = self.config:get("saveAttempts")
+		local attempts = self.config:get("saveAttempts")
 
-				return self.throttle:updateAsync(dataStore, key, function(...)
-					return self.pendingSaves[dataStore][key].transform(...)
-				end, attempts)
-			end)
-			:andThenCall(function()
-				self.writeCooldowns:addWriteCooldown(dataStore, key)
-			end)
+		local promise = self.throttle
+			:updateAsync(dataStore, key, function(...)
+				return self.pendingSaves[dataStore][key].transform(...)
+			end, attempts)
 			:finally(function()
 				self.pendingSaves[dataStore][key] = nil
 
