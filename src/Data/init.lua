@@ -1,78 +1,87 @@
-local Config = require(script.Parent.Config)
 local Promise = require(script.Parent.Parent.Promise)
-local throttleUpdate = require(script.throttleUpdate)
-local WriteCooldown = require(script.WriteCooldown)
+local Throttle = require(script.Throttle)
+local WriteCooldowns = require(script.WriteCooldowns)
 
-local addWriteCooldown = WriteCooldown.addWriteCooldown
-local getWriteCooldown = WriteCooldown.getWriteCooldown
+local Data = {}
+Data.__index = Data
 
-local pendingSaves = {}
+function Data.new(config)
+	return setmetatable({
+		config = config,
+		writeCooldowns = WriteCooldowns.new(),
+		throttle = Throttle.new(config),
+		pendingSaves = {},
+	}, Data)
+end
 
-local function getPendingSave(dataStore, key)
-	if pendingSaves[dataStore] == nil or pendingSaves[dataStore][key] == nil then
+function Data:getPendingSave(dataStore, key)
+	if self.pendingSaves[dataStore] == nil or self.pendingSaves[dataStore][key] == nil then
 		return Promise.resolve()
 	end
 
-	return pendingSaves[dataStore][key].promise
+	return self.pendingSaves[dataStore][key].promise
 end
 
-local Data = {}
-
-function Data.load(dataStore, key, transform)
-	return getPendingSave(dataStore, key)
-		:andThenCall(getWriteCooldown, dataStore, key)
+function Data:load(dataStore, key, transform)
+	return self:getPendingSave(dataStore, key)
 		:andThen(function()
-			local attempts = Config.get("loadAttempts")
-			local retryDelay = Config.get("loadRetryDelay")
+			return self.writeCooldowns:getWriteCooldown(dataStore, key)
+		end)
+		:andThen(function()
+			local attempts = self.config:get("loadAttempts")
+			local retryDelay = self.config:get("loadRetryDelay")
 
-			return throttleUpdate(dataStore, key, transform, attempts, retryDelay)
+			return self.throttle:updateAsync(dataStore, key, transform, attempts, retryDelay)
 		end)
 		:tap(function()
-			addWriteCooldown(dataStore, key)
+			self.writeCooldowns:addWriteCooldown(dataStore, key)
 		end)
 end
 
-function Data.save(dataStore, key, transform)
-	if pendingSaves[dataStore] == nil then
-		pendingSaves[dataStore] = {}
+function Data:save(dataStore, key, transform)
+	if self.pendingSaves[dataStore] == nil then
+		self.pendingSaves[dataStore] = {}
 	end
 
-	local pendingSave = pendingSaves[dataStore][key]
+	local pendingSave = self.pendingSaves[dataStore][key]
 
 	if pendingSave ~= nil then
 		pendingSave.transform = transform
 
 		return pendingSave.promise
 	else
-		pendingSaves[dataStore][key] = { transform = transform }
+		self.pendingSaves[dataStore][key] = { transform = transform }
 
-		local promise = getWriteCooldown(dataStore, key)
+		local promise = self.writeCooldowns
+			:getWriteCooldown(dataStore, key)
 			:andThen(function()
-				local attempts = Config.get("saveAttempts")
+				local attempts = self.config:get("saveAttempts")
 
-				return throttleUpdate(dataStore, key, function(...)
-					return pendingSaves[dataStore][key].transform(...)
+				return self.throttle:updateAsync(dataStore, key, function(...)
+					return self.pendingSaves[dataStore][key].transform(...)
 				end, attempts)
 			end)
-			:andThenCall(addWriteCooldown, dataStore, key)
+			:andThenCall(function()
+				self.writeCooldowns:addWriteCooldown(dataStore, key)
+			end)
 			:finally(function()
-				pendingSaves[dataStore][key] = nil
+				self.pendingSaves[dataStore][key] = nil
 
-				if next(pendingSaves[dataStore]) == nil then
-					pendingSaves[dataStore] = nil
+				if next(self.pendingSaves[dataStore]) == nil then
+					self.pendingSaves[dataStore] = nil
 				end
 			end)
 
 		if promise:getStatus() == Promise.Status.Started then
-			pendingSaves[dataStore][key].promise = promise
+			self.pendingSaves[dataStore][key].promise = promise
 		end
 
 		return promise
 	end
 end
 
-function Data.getPendingSaves()
-	return pendingSaves
+function Data:getPendingSaves()
+	return self.pendingSaves
 end
 
 return Data

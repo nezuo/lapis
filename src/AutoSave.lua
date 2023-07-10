@@ -1,17 +1,34 @@
 local RunService = game:GetService("RunService")
 
-local Data = require(script.Parent.Data)
 local Promise = require(script.Parent.Parent.Promise)
 
 local UPDATE_INTERVAL = 5 * 60
 
-local documents = {}
+local AutoSave = {}
+AutoSave.__index = AutoSave
 
-local function start()
+function AutoSave.new(data)
+	return setmetatable({
+		documents = {},
+		data = data,
+	}, AutoSave)
+end
+
+function AutoSave:addDocument(document)
+	table.insert(self.documents, document)
+end
+
+function AutoSave:removeDocument(document)
+	local index = table.find(self.documents, document)
+
+	table.remove(self.documents, index)
+end
+
+function AutoSave:start()
 	local nextUpdateAt = os.clock() + UPDATE_INTERVAL
 	RunService.Heartbeat:Connect(function()
 		if os.clock() >= nextUpdateAt then
-			for _, document in documents do
+			for _, document in self.documents do
 				document:save():catch(warn)
 			end
 
@@ -20,14 +37,14 @@ local function start()
 	end)
 
 	game:BindToClose(function()
-		while #documents > 0 do
-			documents[#documents]:close()
+		while #self.documents > 0 do
+			self.documents[#self.documents]:close()
 		end
 
 		local promises = {}
 
 		-- This will wait for documents that closed before BindToClose was called.
-		for _, pendingSaves in Data.getPendingSaves() do
+		for _, pendingSaves in self.data:getPendingSaves() do
 			for _, pendingSave in pendingSaves do
 				table.insert(promises, pendingSave.promise)
 			end
@@ -35,20 +52,6 @@ local function start()
 
 		Promise.allSettled(promises):await()
 	end)
-end
-
-start()
-
-local AutoSave = {}
-
-function AutoSave.addDocument(document)
-	table.insert(documents, document)
-end
-
-function AutoSave.removeDocument(document)
-	local index = table.find(documents, document)
-
-	table.remove(documents, index)
 end
 
 return AutoSave
