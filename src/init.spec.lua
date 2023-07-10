@@ -131,6 +131,7 @@ return function()
 
 		local promise = collection:load("abc")
 
+		-- This progresses all the load retries.
 		context.clock:tick(19)
 
 		expect(function()
@@ -145,6 +146,7 @@ return function()
 
 		local promise = collection:load("lock")
 
+		-- This progresses all but one of the load retries.
 		context.clock:tick(18)
 
 		expect(promise:getStatus()).to.equal(Promise.Status.Started)
@@ -152,6 +154,7 @@ return function()
 		-- Remove the lock.
 		context.write("lock", "lock", { apples = 2 })
 
+		-- This progresses the last load retry.
 		context.clock:tick(1)
 
 		expect(function()
@@ -179,6 +182,7 @@ return function()
 
 		local promise1 = collection:load("ghi")
 
+		-- This progresses all of the load retries
 		context.clock:tick(19)
 
 		expect(function()
@@ -242,11 +246,7 @@ return function()
 		local close = document:close()
 		local open = collection:load("doc")
 
-		context.clock:tick(6)
-
 		close:expect()
-
-		context.clock:tick(6)
 
 		local newDocument = open:expect()
 
