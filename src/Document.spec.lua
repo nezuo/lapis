@@ -10,25 +10,46 @@ local DEFAULT_OPTIONS = {
 }
 
 return function()
-	itFIXME("combines save and close requests", function(context)
-		local document = context.lapis.createCollection("fff", DEFAULT_OPTIONS):load("doc"):expect()
+	it("it should not merge close into save when save is running", function(context)
+		local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("doc"):expect()
 
-		document:write({
-			foo = "updated value",
-		})
+		-- It's not safe to merge saves when UpdateAsync is running.
+		-- This will yield the UpdateAsync call until stopYield is called.
+		context.dataStoreService.yield:startYield()
 
 		local save = document:save()
+		document:write({ foo = "new" })
 		local close = document:close()
+
+		context.dataStoreService.yield:stopYield()
 
 		Promise.all({ save, close }):expect()
 
-		expect(save).to.equal(close)
+		local saved = context.read("collection", "doc")
 
-		local saved = context.read("fff", "doc")
+		-- If data.foo == "bar", that means the close was merged with the save when it wasn't safe to.
+		expect(saved.data.foo).to.equal("new")
+	end)
 
-		expect(saved).to.be.a("table")
+	it("it should merge pending saves", function(context)
+		local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("doc"):expect()
+
+		context.dataStoreService.yield:startYield()
+
+		local ongoingSave = document:save()
+
+		local pendingSave = document:save()
+		local pendingClose = document:close() -- This should override the pending save.
+
+		context.dataStoreService.yield:stopYield()
+
+		expect(pendingSave).to.equal(pendingClose)
+
+		Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
+
+		local saved = context.read("collection", "doc")
+
 		expect(saved.lockId).never.to.be.ok()
-		expect(saved.data.foo).to.equal("updated value")
 	end)
 
 	it("saves data", function(context)

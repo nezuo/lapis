@@ -1,7 +1,5 @@
 local RunService = game:GetService("RunService")
 
-local Promise = require(script.Parent.Parent.Promise)
-
 local UPDATE_INTERVAL = 5 * 60
 
 local AutoSave = {}
@@ -41,16 +39,7 @@ function AutoSave:start()
 			self.documents[#self.documents]:close()
 		end
 
-		local promises = {}
-
-		-- This will wait for documents that closed before BindToClose was called.
-		for _, pendingSaves in self.data:getPendingSaves() do
-			for _, pendingSave in pendingSaves do
-				table.insert(promises, pendingSave.promise)
-			end
-		end
-
-		Promise.allSettled(promises):await()
+		self.data:waitForOngoingSaves():await()
 	end)
 end
 
