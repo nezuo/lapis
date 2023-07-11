@@ -2,6 +2,9 @@
 
 ## Unreleased Changes
 * Remove write cooldown throttling since write cooldowns [were removed](https://devforum.roblox.com/t/removal-of-6s-cool-down-for-data-stores/2436230)
+* Fix save merging algorithm ([#13])
+
+[#13]: https://github.com/nezuo/lapis/pull/13
 
 ## 0.2.1 - June 10, 2023
 * Move TestEZ and DataStoreServiceMock to dev dependencies
