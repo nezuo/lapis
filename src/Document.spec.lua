@@ -45,7 +45,11 @@ return function()
 
 		expect(pendingSave).to.equal(pendingClose)
 
-		Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
+		local values = Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
+
+		-- save and close should never resolve with a value.
+		-- It's checked in this test to make sure it works with save merging.
+		expect(#values).to.equal(0)
 
 		local saved = context.read("collection", "doc")
 
@@ -153,6 +157,9 @@ return function()
 	end)
 
 	it("doesn't throw when the budget is exhausted", function(context)
+		-- This makes sure the test doesn't pass by retyring after budget is added.
+		context.lapis.setConfig({ loadAttempts = 1 })
+
 		local document = context.lapis.createCollection("bye", DEFAULT_OPTIONS):load("bye"):expect()
 
 		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.GetAsync] = 0
@@ -161,8 +168,10 @@ return function()
 
 		local promise = document:save()
 
-		-- This updates the budget so that the document can save.
-		context.clock:tick(1)
+		-- This wait is necessary so that the request is run by Throttle.
+		task.wait(0.1)
+
+		context.dataStoreService.budget:update()
 
 		expect(function()
 			promise:expect()

@@ -5,9 +5,13 @@ local Data = {}
 Data.__index = Data
 
 function Data.new(config)
+	local throttle = Throttle.new(config)
+
+	throttle:start()
+
 	return setmetatable({
 		config = config,
-		throttle = Throttle.new(config),
+		throttle = throttle,
 		ongoingSaves = {},
 	}, Data)
 end
@@ -59,13 +63,17 @@ function Data:save(dataStore, key, transform)
 
 	if ongoingSave == nil then
 		local attempts = self.config:get("saveAttempts")
-		local promise = self.throttle:updateAsync(dataStore, key, transform, attempts):finally(function()
-			self.ongoingSaves[dataStore][key] = nil
+		local promise = self
+			.throttle
+			:updateAsync(dataStore, key, transform, attempts)
+			:andThenReturn() -- Save promise should not resolve with a value.
+			:finally(function()
+				self.ongoingSaves[dataStore][key] = nil
 
-			if next(self.ongoingSaves[dataStore]) == nil then
-				self.ongoingSaves[dataStore] = nil
-			end
-		end)
+				if next(self.ongoingSaves[dataStore]) == nil then
+					self.ongoingSaves[dataStore] = nil
+				end
+			end)
 
 		if promise:getStatus() == Promise.Status.Started then
 			self.ongoingSaves[dataStore][key] = { promise = promise }

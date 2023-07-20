@@ -1,12 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Clock = require(ReplicatedStorage.Clock)
 local DataStoreServiceMock = require(ReplicatedStorage.DevPackages.DataStoreServiceMock)
 local Internal = require(script.Parent.Internal)
 local Promise = require(script.Parent.Parent.Promise)
-local UnixTimestampMillis = require(script.Parent.UnixTimestampMillis)
 
-local SUPER_SPEED = true
 local DEFAULT_OPTIONS = {
 	validate = function(data)
 		return typeof(data.apples) == "number", "apples should be a number"
@@ -16,15 +13,9 @@ local DEFAULT_OPTIONS = {
 	},
 }
 
-if SUPER_SPEED then
-	print("Running tests at SUPER SPEED.")
-else
-	print("Running tests at NORMAL SPEED.")
-end
-
 return function()
 	beforeEach(function(context)
-		local dataStoreService = if SUPER_SPEED then DataStoreServiceMock.manual() else DataStoreServiceMock.new()
+		local dataStoreService = DataStoreServiceMock.manual()
 
 		context.dataStoreService = dataStoreService
 
@@ -33,12 +24,6 @@ return function()
 
 		context.lapis = Internal.new(false)
 		context.lapis.setConfig({ dataStoreService = dataStoreService, showRetryWarnings = false })
-
-		context.clock = Clock.new(dataStoreService, SUPER_SPEED)
-
-		UnixTimestampMillis.get = function()
-			return context.clock:now() * 1000
-		end
 
 		context.write = function(name, key, data, lockId)
 			local dataStore = dataStoreService.dataStores[name]["global"]
@@ -53,17 +38,6 @@ return function()
 
 		context.read = function(name, key)
 			return dataStoreService.dataStores[name]["global"].data[key]
-		end
-
-		if SUPER_SPEED then
-			Promise.delay = function(duration)
-				return Promise.new(function(resolve)
-					context.clock:addTask({
-						resumeAt = context.clock:now() + duration,
-						resume = resolve,
-					})
-				end)
-			end
 		end
 	end)
 
@@ -84,13 +58,7 @@ return function()
 	end)
 
 	it("freezes default data", function(context)
-		local defaultData = {
-			a = {
-				b = {
-					c = 5,
-				},
-			},
-		}
+		local defaultData = { a = { b = { c = 5 } } }
 
 		context.lapis.createCollection("baz", {
 			validate = function()
@@ -124,38 +92,54 @@ return function()
 		end).to.throw("apples should be a number")
 	end)
 
-	it("load throws when document is already locked", function(context)
-		local collection = context.lapis.createCollection("abc", DEFAULT_OPTIONS)
+	it("should session lock the document", function(context)
+		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
 
-		context.write("abc", "abc", { apples = 2 }, 12345)
+		local otherLapis = Internal.new(false)
+		otherLapis.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
-		local promise = collection:load("abc")
-
-		-- This progresses all the load retries.
-		context.clock:tick(19)
+		local otherCollection = otherLapis.createCollection("collection", DEFAULT_OPTIONS)
 
 		expect(function()
-			promise:expect()
+			otherCollection:load("doc"):expect()
 		end).to.throw("Could not acquire lock")
+
+		-- It should keep the session lock when saved.
+		document:save():expect()
+
+		expect(function()
+			otherCollection:load("doc"):expect()
+		end).to.throw("Could not acquire lock")
+
+		-- It should remove the session lock when closed.
+		document:close():expect()
+
+		expect(function()
+			otherCollection:load("doc"):expect()
+		end).never.to.throw()
 	end)
 
-	it("load continuously tries to get the lock", function(context)
-		local collection = context.lapis.createCollection("lock", DEFAULT_OPTIONS)
+	it("load should retry when document is session loked", function(context)
+		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
 
-		context.write("lock", "lock", { apples = 2 }, "lockId")
+		local otherLapis = Internal.new(false)
+		otherLapis.setConfig({
+			dataStoreService = context.dataStoreService,
+			loadAttempts = 2,
+			loadRetryDelay = 0.5,
+			showRetryWarnings = false,
+		})
 
-		local promise = collection:load("lock")
+		local otherCollection = otherLapis.createCollection("collection", DEFAULT_OPTIONS)
+		local promise = otherCollection:load("doc")
 
-		-- This progresses all but one of the load retries.
-		context.clock:tick(18)
+		-- Wait for the document to attempt to load once.
+		task.wait(0.1)
 
-		expect(promise:getStatus()).to.equal(Promise.Status.Started)
-
-		-- Remove the lock.
-		context.write("lock", "lock", { apples = 2 })
-
-		-- This progresses the last load retry.
-		context.clock:tick(1)
+		-- Remove the sesssion lock.
+		document:close():expect()
 
 		expect(function()
 			promise:expect()
@@ -176,14 +160,12 @@ return function()
 	end)
 
 	it("load returns a new promise when first load fails", function(context)
+		context.lapis.setConfig({ loadAttempts = 1 })
+		context.dataStoreService.errors:addSimulatedErrors(1)
+
 		local collection = context.lapis.createCollection("ghi", DEFAULT_OPTIONS)
 
-		context.dataStoreService.errors:addSimulatedErrors(20)
-
 		local promise1 = collection:load("ghi")
-
-		-- This progresses all of the load retries
-		context.clock:tick(19)
 
 		expect(function()
 			promise1:expect()

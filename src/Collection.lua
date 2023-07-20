@@ -5,7 +5,6 @@ local Document = require(script.Parent.Document)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
-local UnixTimestampMillis = require(script.Parent.UnixTimestampMillis)
 
 local LOCK_EXPIRE = 30 * 60
 
@@ -60,7 +59,10 @@ function Collection:load(key)
 					return "fail", "Saved migration version ahead of latest version"
 				end
 
-				if value.lockId ~= nil and (UnixTimestampMillis.get() - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE then
+				if
+					value.lockId ~= nil
+					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE
+				then
 					return "retry", "Could not acquire lock"
 				end
 
