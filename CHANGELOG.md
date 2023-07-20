@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.2 - July 19, 2023
 * Remove write cooldown throttling since write cooldowns [were removed](https://devforum.roblox.com/t/removal-of-6s-cool-down-for-data-stores/2436230) ([#11])
 * Fix save merging algorithm ([#13])
 * Added new throttle queue which allows load/save/close requests from different keys to be processed at the same time ([#15])
