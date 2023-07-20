@@ -1,10 +1,13 @@
 # Lapis Changelog
 
 ## Unreleased Changes
-* Remove write cooldown throttling since write cooldowns [were removed](https://devforum.roblox.com/t/removal-of-6s-cool-down-for-data-stores/2436230)
+* Remove write cooldown throttling since write cooldowns [were removed](https://devforum.roblox.com/t/removal-of-6s-cool-down-for-data-stores/2436230) ([#11])
 * Fix save merging algorithm ([#13])
+* Added new throttle queue which allows load/save/close requests from different keys to be processed at the same time ([#15])
 
+[#11]: https://github.com/nezuo/lapis/pull/11
 [#13]: https://github.com/nezuo/lapis/pull/13
+[#15]: https://github.com/nezuo/lapis/pull/15
 
 ## 0.2.1 - June 10, 2023
 * Move TestEZ and DataStoreServiceMock to dev dependencies
