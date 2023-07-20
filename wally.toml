@@ -11,4 +11,4 @@ Promise = "evaera/promise@4.0.0"
 
 [dev-dependencies]
 TestEZ = "roblox/testez@0.4.1"
-DataStoreServiceMock = "nezuo/data-store-service-mock@0.2.4"
+DataStoreServiceMock = "nezuo/data-store-service-mock@0.3.0"
