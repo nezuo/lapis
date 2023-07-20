@@ -58,7 +58,7 @@ end
 	@return Collection
 ]=]
 function Lapis.createCollection(name, options)
-	internal.createCollection(name, options)
+	return internal.createCollection(name, options)
 end
 
 return Lapis

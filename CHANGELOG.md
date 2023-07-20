@@ -2,6 +2,9 @@
 
 ## Unreleased Changes
 
+## 0.2.3 - July 19, 2023
+* Fix silly mistake where I don't return the collection from `createCollection`
+
 ## 0.2.2 - July 19, 2023
 * Remove write cooldown throttling since write cooldowns [were removed](https://devforum.roblox.com/t/removal-of-6s-cool-down-for-data-stores/2436230) ([#11])
 * Fix save merging algorithm ([#13])
