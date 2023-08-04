@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.4 - August 3, 2023
 * Fix `game:BindToClose` not waiting for documents to close.
 
 ## 0.2.3 - July 19, 2023
