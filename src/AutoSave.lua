@@ -22,6 +22,14 @@ function AutoSave:removeDocument(document)
 	table.remove(self.documents, index)
 end
 
+function AutoSave:onGameClose()
+	while #self.documents > 0 do
+		self.documents[#self.documents]:close()
+	end
+
+	self.data:waitForOngoingSaves():await()
+end
+
 function AutoSave:start()
 	local nextUpdateAt = os.clock() + UPDATE_INTERVAL
 	RunService.Heartbeat:Connect(function()
@@ -35,11 +43,7 @@ function AutoSave:start()
 	end)
 
 	game:BindToClose(function()
-		while #self.documents > 0 do
-			self.documents[#self.documents]:close()
-		end
-
-		self.data:waitForOngoingSaves():await()
+		self:onGameClose()
 	end)
 end
 

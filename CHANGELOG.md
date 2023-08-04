@@ -1,6 +1,7 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Fix `game:BindToClose` not waiting for documents to close.
 
 ## 0.2.3 - July 19, 2023
 * Fix silly mistake where I don't return the collection from `createCollection`

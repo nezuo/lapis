@@ -18,6 +18,10 @@ function Internal.new(enableAutoSave)
 
 	local internal = {}
 
+	if not enableAutoSave then
+		internal.autoSave = autoSave
+	end
+
 	function internal.setConfig(values)
 		config:set(values)
 	end
