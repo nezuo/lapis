@@ -234,4 +234,34 @@ return function()
 
 		expect(newDocument).never.to.equal(document)
 	end)
+
+	it("closes all document on game:BindToClose", function(context)
+		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+		local one = collection:load("one"):expect()
+		local two = collection:load("two"):expect()
+		local three = collection:load("three"):expect()
+
+		context.dataStoreService.yield:startYield()
+
+		local thread = task.spawn(function()
+			context.lapis.autoSave:onGameClose()
+		end)
+
+		-- This is to make sure onGameClose is waiting for the documents to finish closing.
+		expect(coroutine.status(thread)).to.equal("suspended")
+
+		for _, document in { one, two, three } do
+			expect(function()
+				document:close():expect()
+			end).to.throw("Cannot close a closed document")
+		end
+
+		context.dataStoreService.yield:stopYield()
+
+		-- Wait for documents to finish saving.
+		task.wait(0.1)
+
+		expect(coroutine.status(thread)).to.equal("dead")
+	end)
 end

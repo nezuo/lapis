@@ -32,14 +32,14 @@ end
 function Data:waitForOngoingSaves()
 	local promises = {}
 
-	for _, ongoingSave in self.ongoingSaves do
-		table.insert(
-			promises,
-			Promise.allSettled({
-				ongoingSave.promise,
-				if ongoingSave.pendingSave ~= nil then ongoingSave.pendingSave.promise else nil,
-			})
-		)
+	for _, ongoingSaves in self.ongoingSaves do
+		for _, ongoingSave in ongoingSaves do
+			if ongoingSave.pendingSave ~= nil then
+				table.insert(promises, ongoingSave.pendingSave.promise)
+			end
+
+			table.insert(promises, ongoingSave.promise)
+		end
 	end
 
 	return Promise.allSettled(promises)
