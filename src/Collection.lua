@@ -6,7 +6,7 @@ local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
 
-local LOCK_EXPIRE = 30 * 60
+local DEFAULT_LOCK_EXPIRE = 30 * 60
 
 --[=[
 	Collections are analagous to [GlobalDataStore].
@@ -22,6 +22,7 @@ function Collection.new(name, options, data, autoSave, config)
 	freezeDeep(options.defaultData)
 
 	options.migrations = options.migrations or {}
+	options.lockExpireTime = options.lockExpireTime or DEFAULT_LOCK_EXPIRE
 
 	return setmetatable({
 		dataStore = config:get("dataStoreService"):GetDataStore(name),
@@ -61,7 +62,7 @@ function Collection:load(key)
 
 				if
 					value.lockId ~= nil
-					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE
+					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < self.options.lockExpireTime
 				then
 					return "retry", "Could not acquire lock"
 				end
