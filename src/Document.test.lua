@@ -9,8 +9,10 @@ local DEFAULT_OPTIONS = {
 	defaultData = { foo = "bar" },
 }
 
-return function()
-	it("it should not merge close into save when save is running", function(context)
+return function(x)
+	local shouldThrow = x.shouldThrow
+
+	x.test("it should not merge close into save when save is running", function(context)
 		local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("doc"):expect()
 
 		-- It's not safe to merge saves when UpdateAsync is running.
@@ -28,10 +30,10 @@ return function()
 		local saved = context.read("collection", "doc")
 
 		-- If data.foo == "bar", that means the close was merged with the save when it wasn't safe to.
-		expect(saved.data.foo).to.equal("new")
+		assert(saved.data.foo == "new", "")
 	end)
 
-	it("it should merge pending saves", function(context)
+	x.test("it should merge pending saves", function(context)
 		local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("doc"):expect()
 
 		context.dataStoreService.yield:startYield()
@@ -43,20 +45,20 @@ return function()
 
 		context.dataStoreService.yield:stopYield()
 
-		expect(pendingSave).to.equal(pendingClose)
+		assert(pendingSave == pendingClose, "save and close didn't merge")
 
 		local values = Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
 
 		-- save and close should never resolve with a value.
 		-- It's checked in this test to make sure it works with save merging.
-		expect(#values).to.equal(0)
+		assert(#values == 0, "")
 
 		local saved = context.read("collection", "doc")
 
-		expect(saved.lockId).never.to.be.ok()
+		assert(saved.lockId == nil, "")
 	end)
 
-	it("saves data", function(context)
+	x.test("saves data", function(context)
 		local document = context.lapis.createCollection("12345", DEFAULT_OPTIONS):load("doc"):expect()
 
 		document:write({
@@ -67,58 +69,58 @@ return function()
 
 		local saved = context.read("12345", "doc")
 
-		expect(saved).to.be.a("table")
-		expect(saved.lockId).to.be.a("string")
-		expect(saved.data.foo).to.equal("new value")
+		assert(typeof(saved) == "table", "")
+		assert(typeof(saved.lockId) == "string", "")
+		assert(saved.data.foo == "new value", "")
 	end)
 
-	it("writes the data", function(context)
+	x.test("writes the data", function(context)
 		local document = context.lapis.createCollection("1", DEFAULT_OPTIONS):load("doc"):expect()
 
 		document:write({
 			foo = "baz",
 		})
 
-		expect(document:read().foo).to.equal("baz")
+		assert(document:read().foo == "baz", "")
 	end)
 
-	it("write throws if data doesn't validate", function(context)
+	x.test("write throws if data doesn't validate", function(context)
 		local document = context.lapis.createCollection("2", DEFAULT_OPTIONS):load("doc"):expect()
 
-		expect(function()
+		shouldThrow(function()
 			document:write({
 				foo = 5,
 			})
-		end).to.throw("foo must be a string")
+		end, "foo must be a string")
 	end)
 
-	it("throws when writing/saving/closing a closed document", function(context)
+	x.test("throws when writing/saving/closing a closed document", function(context)
 		local document = context.lapis.createCollection("5", DEFAULT_OPTIONS):load("doc"):expect()
 
 		local promise = document:close()
 
-		expect(function()
+		shouldThrow(function()
 			document:write({})
-		end).to.throw("Cannot write to a closed document")
+		end, "Cannot write to a closed document")
 
-		expect(function()
+		shouldThrow(function()
 			document:save()
-		end).to.throw("Cannot save a closed document")
+		end, "Cannot save a closed document")
 
-		expect(function()
+		shouldThrow(function()
 			document:close()
-		end).to.throw("Cannot close a closed document")
+		end, "Cannot close a closed document")
 
 		promise:expect()
 	end)
 
-	it("loads with default data", function(context)
+	x.test("loads with default data", function(context)
 		local document = context.lapis.createCollection("o", DEFAULT_OPTIONS):load("a"):expect()
 
-		expect(document:read().foo).to.equal("bar")
+		assert(document:read().foo == "bar", "")
 	end)
 
-	it("loads with existing data", function(context)
+	x.test("loads with existing data", function(context)
 		local collection = context.lapis.createCollection("xyz", DEFAULT_OPTIONS)
 
 		context.write("xyz", "xyz", {
@@ -127,10 +129,10 @@ return function()
 
 		local document = collection:load("xyz"):expect()
 
-		expect(document:read().foo).to.equal("existing")
+		assert(document:read().foo == "existing", "")
 	end)
 
-	it("doesn't save data when the lock was stolen", function(context)
+	x.test("doesn't save data when the lock was stolen", function(context)
 		local collection = context.lapis.createCollection("hi", DEFAULT_OPTIONS)
 
 		local document = collection:load("hi"):expect()
@@ -143,20 +145,20 @@ return function()
 			foo = "qux",
 		})
 
-		expect(function()
+		shouldThrow(function()
 			document:save():expect()
-		end).to.throw("The session lock was stolen")
+		end, "The session lock was stolen")
 
-		expect(context.read("hi", "hi").data.foo).to.equal("stolen")
+		assert(context.read("hi", "hi").data.foo == "stolen", "")
 
-		expect(function()
+		shouldThrow(function()
 			document:close():expect()
-		end).to.throw("The session lock was stolen")
+		end, "The session lock was stolen")
 
-		expect(context.read("hi", "hi").data.foo).to.equal("stolen")
+		assert(context.read("hi", "hi").data.foo == "stolen", "")
 	end)
 
-	it("doesn't throw when the budget is exhausted", function(context)
+	x.test("doesn't throw when the budget is exhausted", function(context)
 		-- This makes sure the test doesn't pass by retyring after budget is added.
 		context.lapis.setConfig({ loadAttempts = 1 })
 
@@ -173,8 +175,6 @@ return function()
 
 		context.dataStoreService.budget:update()
 
-		expect(function()
-			promise:expect()
-		end).never.to.throw()
+		promise:expect()
 	end)
 end

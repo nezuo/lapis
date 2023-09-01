@@ -13,8 +13,10 @@ local DEFAULT_OPTIONS = {
 	},
 }
 
-return function()
-	beforeEach(function(context)
+return function(x)
+	local shouldThrow = x.shouldThrow
+
+	x.beforeEach(function(context)
 		local dataStoreService = DataStoreServiceMock.manual()
 
 		context.dataStoreService = dataStoreService
@@ -41,23 +43,23 @@ return function()
 		end
 	end)
 
-	it("throws when setting invalid config key", function(context)
-		expect(function()
+	x.test("throws when setting invalid config key", function(context)
+		shouldThrow(function()
 			context.lapis.setConfig({
 				foo = true,
 			})
-		end).to.throw('Invalid config key "foo"')
+		end, 'Invalid config key "foo"')
 	end)
 
-	it("throws when creating a duplicate collection", function(context)
+	x.test("throws when creating a duplicate collection", function(context)
 		context.lapis.createCollection("foo", DEFAULT_OPTIONS)
 
-		expect(function()
+		shouldThrow(function()
 			context.lapis.createCollection("foo", DEFAULT_OPTIONS)
-		end).to.throw('Collection "foo" already exists')
+		end, 'Collection "foo" already exists')
 	end)
 
-	it("freezes default data", function(context)
+	x.test("freezes default data", function(context)
 		local defaultData = { a = { b = { c = 5 } } }
 
 		context.lapis.createCollection("baz", {
@@ -67,32 +69,32 @@ return function()
 			defaultData = defaultData,
 		})
 
-		expect(function()
+		shouldThrow(function()
 			defaultData.a.b.c = 8
-		end).to.throw()
+		end)
 	end)
 
-	it("validates default data", function(context)
-		expect(function()
+	x.test("validates default data", function(context)
+		shouldThrow(function()
 			context.lapis.createCollection("bar", {
 				validate = function()
 					return false, "data is invalid"
 				end,
 			})
-		end).to.throw("data is invalid")
+		end, "data is invalid")
 	end)
 
-	it("throws when loading invalid data", function(context)
+	x.test("throws when loading invalid data", function(context)
 		local collection = context.lapis.createCollection("apples", DEFAULT_OPTIONS)
 
 		context.write("apples", "a", { apples = "string" })
 
-		expect(function()
+		shouldThrow(function()
 			collection:load("a"):expect()
-		end).to.throw("apples should be a number")
+		end, "apples should be a number")
 	end)
 
-	it("should session lock the document", function(context)
+	x.test("should session lock the document", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
 
@@ -101,26 +103,24 @@ return function()
 
 		local otherCollection = otherLapis.createCollection("collection", DEFAULT_OPTIONS)
 
-		expect(function()
+		shouldThrow(function()
 			otherCollection:load("doc"):expect()
-		end).to.throw("Could not acquire lock")
+		end, "Could not acquire lock")
 
 		-- It should keep the session lock when saved.
 		document:save():expect()
 
-		expect(function()
+		shouldThrow(function()
 			otherCollection:load("doc"):expect()
-		end).to.throw("Could not acquire lock")
+		end, "Could not acquire lock")
 
 		-- It should remove the session lock when closed.
 		document:close():expect()
 
-		expect(function()
-			otherCollection:load("doc"):expect()
-		end).never.to.throw()
+		otherCollection:load("doc"):expect()
 	end)
 
-	it("load should retry when document is session loked", function(context)
+	x.test("load should retry when document is session loked", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
 
@@ -141,25 +141,23 @@ return function()
 		-- Remove the sesssion lock.
 		document:close():expect()
 
-		expect(function()
-			promise:expect()
-		end).never.to.throw()
+		promise:expect()
 	end)
 
-	it("load returns same promise/document", function(context)
+	x.test("load returns same promise/document", function(context)
 		local collection = context.lapis.createCollection("def", DEFAULT_OPTIONS)
 
 		local promise1 = collection:load("def")
 		local promise2 = collection:load("def")
 
-		expect(promise1).to.equal(promise2)
+		assert(promise1 == promise2, "load returns different promises")
 
 		Promise.all({ promise1, promise2 }):expect()
 
-		expect(promise1:expect()).to.equal(promise2:expect())
+		assert(promise1:expect() == promise2:expect(), "promise resolved with different values")
 	end)
 
-	it("load returns a new promise when first load fails", function(context)
+	x.test("load returns a new promise when first load fails", function(context)
 		context.lapis.setConfig({ loadAttempts = 1 })
 		context.dataStoreService.errors:addSimulatedErrors(1)
 
@@ -167,18 +165,18 @@ return function()
 
 		local promise1 = collection:load("ghi")
 
-		expect(function()
+		shouldThrow(function()
 			promise1:expect()
-		end).to.throw()
+		end)
 
 		local promise2 = collection:load("ghi")
 
-		expect(promise1).never.to.equal(promise2)
+		assert(promise1 ~= promise2, "load should return new promise")
 
 		promise2:expect()
 	end)
 
-	it("migrates the data", function(context)
+	x.test("migrates the data", function(context)
 		local collection = context.lapis.createCollection("migration", {
 			validate = function(value)
 				return value == "newData", "value does not equal newData"
@@ -193,12 +191,10 @@ return function()
 
 		context.write("migration", "migration", "data")
 
-		expect(function()
-			collection:load("migration"):expect()
-		end).never.to.throw()
+		collection:load("migration"):expect()
 	end)
 
-	it("throws when migration version is ahead of latest version", function(context)
+	x.test("throws when migration version is ahead of latest version", function(context)
 		local collection = context.lapis.createCollection("collection", {
 			validate = function()
 				return true
@@ -215,12 +211,12 @@ return function()
 
 		local promise = collection:load("document")
 
-		expect(function()
+		shouldThrow(function()
 			promise:expect()
-		end).to.throw("Saved migration version ahead of latest version")
+		end, "Saved migration version ahead of latest version")
 	end)
 
-	it("closing and immediately opening should return a new document", function(context)
+	x.test("closing and immediately opening should return a new document", function(context)
 		local collection = context.lapis.createCollection("ccc", DEFAULT_OPTIONS)
 
 		local document = collection:load("doc"):expect()
@@ -232,10 +228,10 @@ return function()
 
 		local newDocument = open:expect()
 
-		expect(newDocument).never.to.equal(document)
+		assert(newDocument ~= document, "")
 	end)
 
-	it("closes all document on game:BindToClose", function(context)
+	x.test("closes all document on game:BindToClose", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 
 		local one = collection:load("one"):expect()
@@ -248,13 +244,12 @@ return function()
 			context.lapis.autoSave:onGameClose()
 		end)
 
-		-- This is to make sure onGameClose is waiting for the documents to finish closing.
-		expect(coroutine.status(thread)).to.equal("suspended")
+		assert(coroutine.status(thread) == "suspended", "onGameClose didn't wait for the documents to finish closing")
 
 		for _, document in { one, two, three } do
-			expect(function()
+			shouldThrow(function()
 				document:close():expect()
-			end).to.throw("Cannot close a closed document")
+			end, "Cannot close a closed document")
 		end
 
 		context.dataStoreService.yield:stopYield()
@@ -262,6 +257,6 @@ return function()
 		-- Wait for documents to finish saving.
 		task.wait(0.1)
 
-		expect(coroutine.status(thread)).to.equal("dead")
+		assert(coroutine.status(thread) == "dead", "")
 	end)
 end
