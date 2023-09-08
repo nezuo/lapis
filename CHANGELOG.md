@@ -2,8 +2,13 @@
 
 ## Unreleased Changes
 
+## 0.2.5 - September 8, 2023
+* Fix existing data not being frozen on load ([#20])
+
+[#20]: https://github.com/nezuo/lapis/pull/20
+
 ## 0.2.4 - August 3, 2023
-* Fix `game:BindToClose` not waiting for documents to close.
+* Fix `game:BindToClose` not waiting for documents to close
 
 ## 0.2.3 - July 19, 2023
 * Fix silly mistake where I don't return the collection from `createCollection`
