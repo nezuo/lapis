@@ -86,6 +86,8 @@ function Collection:load(key)
 					return Promise.reject(message)
 				end
 
+				freezeDeep(data)
+
 				local document = Document.new(self, key, self.options.validate, lockId, data)
 
 				self.autoSave:addDocument(document)
