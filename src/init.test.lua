@@ -120,14 +120,14 @@ return function(x)
 		otherCollection:load("doc"):expect()
 	end)
 
-	x.test("load should retry when document is session loked", function(context)
+	x.test("load should retry when document is session locked", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
 
 		local otherLapis = Internal.new(false)
 		otherLapis.setConfig({
 			dataStoreService = context.dataStoreService,
-			loadAttempts = 2,
+			loadAttempts = 4,
 			loadRetryDelay = 0.5,
 			showRetryWarnings = false,
 		})
