@@ -132,6 +132,29 @@ return function(x)
 		assert(document:read().foo == "existing", "")
 	end)
 
+	x.test("freezes document data", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			validate = function()
+				return true
+			end,
+			defaultData = {},
+		})
+
+		context.write("collection", "document", { a = { b = 1 } })
+
+		local document = collection:load("document"):expect()
+
+		shouldThrow(function()
+			document:read().a.b = 2
+		end)
+
+		document:write({ a = { b = 2 } })
+
+		shouldThrow(function()
+			document:read().a.b = 3
+		end)
+	end)
+
 	x.test("doesn't save data when the lock was stolen", function(context)
 		local collection = context.lapis.createCollection("hi", DEFAULT_OPTIONS)
 
