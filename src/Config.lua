@@ -1,18 +1,22 @@
 local DataStoreService = game:GetService("DataStoreService")
 
+local types = require(script.Parent.types)
+
 local Config = {}
 Config.__index = Config
 
-function Config.new()
-	return setmetatable({
-		config = {
-			saveAttempts = 5,
-			loadAttempts = 20,
-			loadRetryDelay = 1,
-			showRetryWarnings = true,
-			dataStoreService = DataStoreService,
-		},
-	}, Config)
+function Config.new(): types.Config
+	return (
+		setmetatable({
+			config = {
+				saveAttempts = 5,
+				loadAttempts = 20,
+				loadRetryDelay = 1,
+				showRetryWarnings = true,
+				dataStoreService = DataStoreService,
+			},
+		}, Config) :: any
+	) :: types.Config
 end
 
 function Config:get(key)

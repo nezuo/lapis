@@ -1,6 +1,10 @@
 local Internal = require(script.Internal)
+local types = require(script.types)
 
 local internal = Internal.new(true)
+
+export type Document<T> = types.Document<T>
+export type Collection<T> = types.Collection<T>
 
 --[=[
 	@class Lapis
@@ -38,7 +42,7 @@ local Lapis = {}
 
 	@param values ConfigValues
 ]=]
-function Lapis.setConfig(values)
+function Lapis.setConfig(values: types.PartialLapisConfigValues)
 	internal.setConfig(values)
 end
 
@@ -57,7 +61,7 @@ end
 	@param options CollectionOptions
 	@return Collection
 ]=]
-function Lapis.createCollection(name, options)
+function Lapis.createCollection<T>(name: string, options: types.CollectionOptions<T>): types.Collection<T>
 	return internal.createCollection(name, options)
 end
 

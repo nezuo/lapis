@@ -1,15 +1,17 @@
 local RunService = game:GetService("RunService")
 
+local types = require(script.Parent.types)
+
 local UPDATE_INTERVAL = 5 * 60
 
 local AutoSave = {}
 AutoSave.__index = AutoSave
 
-function AutoSave.new(data)
-	return setmetatable({
+function AutoSave.new<T>(data: types.Data<T>): types.Autosave<T>
+	return (setmetatable({
 		documents = {},
 		data = data,
-	}, AutoSave)
+	}, AutoSave) :: any) :: types.Autosave<T>
 end
 
 function AutoSave:addDocument(document)

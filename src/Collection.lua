@@ -2,9 +2,10 @@ local HttpService = game:GetService("HttpService")
 
 local Compression = require(script.Parent.Compression)
 local Document = require(script.Parent.Document)
-local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
+local freezeDeep = require(script.Parent.freezeDeep)
+local types = require(script.Parent.types)
 
 local LOCK_EXPIRE = 30 * 60
 
@@ -16,20 +17,28 @@ local LOCK_EXPIRE = 30 * 60
 local Collection = {}
 Collection.__index = Collection
 
-function Collection.new(name, options, data, autoSave, config)
+function Collection.new<T>(
+	name: string,
+	options: types.CollectionOptions<T>,
+	data: types.Data<T>,
+	autoSave: types.Autosave<T>,
+	config: types.Config
+): types.Collection<T>
 	assert(options.validate(options.defaultData))
 
 	freezeDeep(options.defaultData)
 
 	options.migrations = options.migrations or {}
 
-	return setmetatable({
-		dataStore = config:get("dataStoreService"):GetDataStore(name),
-		options = options,
-		openDocuments = {},
-		data = data,
-		autoSave = autoSave,
-	}, Collection)
+	return (
+		setmetatable({
+			dataStore = (config:get("dataStoreService") :: DataStoreService):GetDataStore(name),
+			options = options,
+			openDocuments = {},
+			data = data,
+			autoSave = autoSave,
+		}, Collection) :: any
+	) :: types.Collection<T>
 end
 
 --[=[

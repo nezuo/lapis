@@ -2,10 +2,11 @@ local AutoSave = require(script.Parent.AutoSave)
 local Collection = require(script.Parent.Collection)
 local Config = require(script.Parent.Config)
 local Data = require(script.Parent.Data)
+local types = require(script.Parent.types)
 
 local Internal = {}
 
-function Internal.new(enableAutoSave)
+function Internal.new<T>(enableAutoSave: boolean): types.Internal<T>
 	local config = Config.new()
 	local data = Data.new(config)
 	local autoSave = AutoSave.new(data)
@@ -16,17 +17,17 @@ function Internal.new(enableAutoSave)
 
 	local usedCollections = {}
 
-	local internal = {}
+	local internal = {} :: types.Internal<T>
 
 	if not enableAutoSave then
 		internal.autoSave = autoSave
 	end
 
-	function internal.setConfig(values)
+	function internal.setConfig(values: types.PartialLapisConfigValues)
 		config:set(values)
 	end
 
-	function internal.createCollection(name, options)
+	function internal.createCollection<U>(name: string, options: types.CollectionOptions<U>): types.Collection<U>
 		if usedCollections[name] then
 			error(`Collection "{name}" already exists`)
 		end

@@ -1,6 +1,7 @@
 local RunService = game:GetService("RunService")
 
 local Promise = require(script.Parent.Parent.Parent.Promise)
+local types = require(script.Parent.Parent.types)
 
 local function updateAsync(request)
 	return Promise.new(function(resolve)
@@ -29,11 +30,11 @@ end
 local Throttle = {}
 Throttle.__index = Throttle
 
-function Throttle.new(config)
-	return setmetatable({
+function Throttle.new<T>(config: types.Config): types.Throttle<T>
+	return (setmetatable({
 		config = config,
 		queue = {},
-	}, Throttle)
+	}, Throttle) :: any) :: types.Throttle<T>
 end
 
 function Throttle:getUpdateAsyncBudget()

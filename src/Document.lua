@@ -1,5 +1,6 @@
 local Compression = require(script.Parent.Compression)
 local freezeDeep = require(script.Parent.freezeDeep)
+local types = require(script.Parent.types)
 
 --[=[
 	@class Document
@@ -7,15 +8,23 @@ local freezeDeep = require(script.Parent.freezeDeep)
 local Document = {}
 Document.__index = Document
 
-function Document.new(collection, key, validate, lockId, data)
-	return setmetatable({
-		collection = collection,
-		key = key,
-		validate = validate,
-		lockId = lockId,
-		data = data,
-		closed = false,
-	}, Document)
+function Document.new<T>(
+	collection: types.Collection<T>,
+	key: string,
+	validate: (T) -> boolean,
+	lockId: string,
+	data: T
+): types.Document<T>
+	return (
+		setmetatable({
+			collection = collection,
+			key = key,
+			validate = validate,
+			lockId = lockId,
+			data = data,
+			closed = false,
+		}, Document) :: any
+	) :: types.Document<T>
 end
 
 --[=[

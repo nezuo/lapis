@@ -1,19 +1,22 @@
 local Promise = require(script.Parent.Parent.Promise)
 local Throttle = require(script.Throttle)
+local types = require(script.Parent.types)
 
 local Data = {}
 Data.__index = Data
 
-function Data.new(config)
+function Data.new<T>(config: types.Config): types.Data<T>
 	local throttle = Throttle.new(config)
 
 	throttle:start()
 
-	return setmetatable({
-		config = config,
-		throttle = throttle,
-		ongoingSaves = {},
-	}, Data)
+	return (
+		setmetatable({
+			config = config,
+			throttle = throttle,
+			ongoingSaves = {},
+		}, Data) :: any
+	) :: types.Data<T>
 end
 
 function Data:waitForOngoingSave(dataStore, key)
