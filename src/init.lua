@@ -1,6 +1,39 @@
 local Internal = require(script.Internal)
+local PromiseTypes = require(script.PromiseTypes)
 
 local internal = Internal.new(true)
+
+export type DataStoreService = {
+	GetDataStore: (name: string) -> GlobalDataStore,
+	GetRequestBudgetForRequestType: (requestType: Enum.DataStoreRequestType) -> number,
+}
+
+export type PartialLapisConfig = {
+	saveAttempts: number?,
+	loadAttempts: number?,
+	loadRetryDelay: number?,
+	showRetryWarnings: boolean?,
+	dataStoreService: DataStoreService?,
+	[any]: nil,
+}
+
+export type CollectionOptions<T> = {
+	defaultData: T,
+	migrations: { (any) -> any }?,
+	validate: (T) -> (boolean, string?),
+	[any]: nil,
+}
+
+export type Collection<T> = {
+	load: (self: Collection<T>, key: string) -> PromiseTypes.TypedPromise<Document<T>>,
+}
+
+export type Document<T> = {
+	read: (self: Document<T>) -> T,
+	write: (self: Document<T>, T) -> (),
+	save: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
+	close: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
+}
 
 --[=[
 	@class Lapis
@@ -8,7 +41,7 @@ local internal = Internal.new(true)
 local Lapis = {}
 
 --[=[
-	@interface ConfigValues
+	@interface PartialLapisConfig
 	@within Lapis
 	.saveAttempts number? -- Max save/close retry attempts
 	.loadAttempts number? -- Max load retry attempts
@@ -36,10 +69,10 @@ local Lapis = {}
 	}
 	```
 
-	@param values ConfigValues
+	@param partialConfig PartialLapisConfig
 ]=]
-function Lapis.setConfig(values)
-	internal.setConfig(values)
+function Lapis.setConfig(partialConfig: PartialLapisConfig)
+	internal.setConfig(partialConfig)
 end
 
 --[=[
@@ -57,7 +90,7 @@ end
 	@param options CollectionOptions
 	@return Collection
 ]=]
-function Lapis.createCollection(name, options)
+function Lapis.createCollection<T>(name: string, options: CollectionOptions<T>): Collection<T>
 	return internal.createCollection(name, options)
 end
 
