@@ -10,6 +10,7 @@ local DEFAULT_OPTIONS = {
 }
 
 return function(x)
+	local assertEqual = x.assertEqual
 	local shouldThrow = x.shouldThrow
 
 	x.test("it should not merge close into save when save is running", function(context)
@@ -199,5 +200,76 @@ return function(x)
 		context.dataStoreService.budget:update()
 
 		promise:expect()
+	end)
+
+	x.nested("Document:beforeClose", function()
+		x.test("throws when setting twice", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function() end)
+
+			shouldThrow(function()
+				document:beforeClose(function() end)
+			end, "Document:beforeClose can only be called once")
+		end)
+
+		x.test("throws when calling close in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:close()
+			end)
+
+			shouldThrow(function()
+				document:close()
+			end, "beforeClose callback threw error")
+		end)
+
+		x.test("throws when calling save in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:save()
+			end)
+
+			shouldThrow(function()
+				document:close()
+			end, "beforeClose callback threw error")
+		end)
+
+		x.test("closes document even if document error", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			local promise = collection:load("document")
+			local document = promise:expect()
+
+			document:beforeClose(function()
+				error("error")
+			end)
+
+			shouldThrow(function()
+				document:close()
+			end)
+
+			assert(collection:load("document") ~= promise, "collection:load should return a new promise")
+
+			shouldThrow(function()
+				document:write({ foo = "baz" })
+			end, "Cannot write to a closed document")
+		end)
+
+		x.test("saves new data", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:read() -- This checks that read doesn't error in the callback.
+
+				document:write({ foo = "new" })
+			end)
+
+			document:close():expect()
+
+			assertEqual(context.read("collection", "document").data.foo, "new")
+		end)
 	end)
 end

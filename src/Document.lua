@@ -15,6 +15,7 @@ function Document.new(collection, key, validate, lockId, data)
 		lockId = lockId,
 		data = data,
 		closed = false,
+		callingBeforeClose = false,
 	}, Document)
 end
 
@@ -55,7 +56,7 @@ end
 	@return Promise<()>
 ]=]
 function Document:save()
-	assert(not self.closed, "Cannot save a closed document")
+	assert(not self.closed and not self.callingBeforeClose, "Cannot save a closed document")
 
 	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
@@ -79,16 +80,37 @@ end
 	Throws an error if the document was closed.
 	:::
 
+	:::warning
+	Throws an error or yields if the beforeClose callback does.
+	:::
+
 	@return Promise<()>
 ]=]
 function Document:close()
-	assert(not self.closed, "Cannot close a closed document")
+	assert(not self.closed and not self.callingBeforeClose, "Cannot close a closed document")
 
-	self.closed = true
+	local function close()
+		self.closed = true
 
-	self.collection.openDocuments[self.key] = nil
+		self.collection.openDocuments[self.key] = nil
 
-	self.collection.autoSave:removeDocument(self)
+		self.collection.autoSave:removeDocument(self)
+	end
+
+	if self.beforeCloseCallback ~= nil then
+		self.callingBeforeClose = true
+
+		local ok, err = pcall(self.beforeCloseCallback)
+
+		if not ok then
+			close()
+			error(`beforeClose callback threw error: {tostring(err)}`)
+		end
+
+		self.callingBeforeClose = false
+	end
+
+	close()
 
 	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 		if value.lockId ~= self.lockId then
@@ -103,6 +125,22 @@ function Document:close()
 
 		return "succeed", value
 	end)
+end
+
+--[=[
+	Sets a callback that is run inside `document:close` before it saves. The document can be read and written to in the
+	callback.
+
+	:::warning
+	Throws an error if it was called previously.
+	:::
+
+	@param callback () -> ()
+]=]
+function Document:beforeClose(callback)
+	assert(self.beforeCloseCallback == nil, "Document:beforeClose can only be called once")
+
+	self.beforeCloseCallback = callback
 end
 
 return Document
