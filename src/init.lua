@@ -33,6 +33,7 @@ export type Document<T> = {
 	write: (self: Document<T>, T) -> (),
 	save: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
 	close: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
+	beforeClose: (self: Document<T>, callback: () -> ()) -> (),
 }
 
 --[=[

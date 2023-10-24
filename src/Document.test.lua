@@ -10,6 +10,7 @@ local DEFAULT_OPTIONS = {
 }
 
 return function(x)
+	local assertEqual = x.assertEqual
 	local shouldThrow = x.shouldThrow
 
 	x.test("it should not merge close into save when save is running", function(context)
@@ -43,11 +44,14 @@ return function(x)
 		local pendingSave = document:save()
 		local pendingClose = document:close() -- This should override the pending save.
 
+		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.UpdateAsync] = 1
+
 		context.dataStoreService.yield:stopYield()
 
-		assert(pendingSave == pendingClose, "save and close didn't merge")
+		local values = Promise.all({ ongoingSave, pendingSave }):expect()
 
-		local values = Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
+		-- If the save and close don't merge, this will throw because there isn't enough budget to close.
+		pendingClose:now("save and close didn't merge"):expect()
 
 		-- save and close should never resolve with a value.
 		-- It's checked in this test to make sure it works with save merging.
@@ -199,5 +203,81 @@ return function(x)
 		context.dataStoreService.budget:update()
 
 		promise:expect()
+	end)
+
+	x.nested("Document:beforeClose", function()
+		x.test("throws when setting twice", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function() end)
+
+			shouldThrow(function()
+				document:beforeClose(function() end)
+			end, "Document:beforeClose can only be called once")
+		end)
+
+		x.test("throws when calling close in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:close()
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "beforeClose callback threw error")
+		end)
+
+		x.test("throws when calling save in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:save()
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "beforeClose callback threw error")
+		end)
+
+		x.test("closes document even if beforeClose errors", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			local promise = collection:load("document")
+			local document = promise:expect()
+
+			document:beforeClose(function()
+				error("error")
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end)
+
+			local secondPromise = collection:load("document")
+
+			assert(secondPromise ~= promise, "collection:load should return a new promise")
+
+			shouldThrow(function()
+				document:write({ foo = "baz" })
+			end, "Cannot write to a closed document")
+
+			-- Ignore the could not acquire lock error.
+			secondPromise:catch(function() end)
+		end)
+
+		x.test("saves new data", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeClose(function()
+				document:read() -- This checks that read doesn't error in the callback.
+
+				document:write({ foo = "new" })
+			end)
+
+			document:close():expect()
+
+			assertEqual(context.read("collection", "document").data.foo, "new")
+		end)
 	end)
 end
