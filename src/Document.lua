@@ -1,5 +1,6 @@
 local Compression = require(script.Parent.Compression)
 local freezeDeep = require(script.Parent.freezeDeep)
+local Promise = require(script.Parent.Parent.Promise)
 
 --[=[
 	@class Document
@@ -81,7 +82,7 @@ end
 	:::
 
 	:::warning
-	Throws an error or yields if the beforeClose callback does.
+	If the beforeClose callback errors, the returned promise will reject and the data will not be saved.
 	:::
 
 	@return Promise<()>
@@ -89,42 +90,45 @@ end
 function Document:close()
 	assert(not self.closed and not self.callingBeforeClose, "Cannot close a closed document")
 
-	local function close()
-		self.closed = true
-
-		self.collection.openDocuments[self.key] = nil
-
-		self.collection.autoSave:removeDocument(self)
-	end
+	local promise = Promise.resolve()
 
 	if self.beforeCloseCallback ~= nil then
 		self.callingBeforeClose = true
 
-		local ok, err = pcall(self.beforeCloseCallback)
+		promise = Promise.new(function(resolve, reject)
+			local ok, err = pcall(self.beforeCloseCallback)
 
-		if not ok then
-			close()
-			error(`beforeClose callback threw error: {tostring(err)}`)
-		end
-
-		self.callingBeforeClose = false
+			if not ok then
+				reject(`beforeClose callback threw error: {tostring(err)}`)
+			else
+				resolve()
+			end
+		end)
 	end
 
-	close()
+	return promise
+		:finally(function()
+			self.closed = true
 
-	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
-		if value.lockId ~= self.lockId then
-			return "fail", "The session lock was stolen"
-		end
+			self.collection.openDocuments[self.key] = nil
 
-		local scheme, compressed = Compression.compress(self.data)
+			self.collection.autoSave:removeDocument(self)
+		end)
+		:andThen(function()
+			return self.collection.data:save(self.collection.dataStore, self.key, function(value)
+				if value.lockId ~= self.lockId then
+					return "fail", "The session lock was stolen"
+				end
 
-		value.compressionScheme = scheme
-		value.data = compressed
-		value.lockId = nil
+				local scheme, compressed = Compression.compress(self.data)
 
-		return "succeed", value
-	end)
+				value.compressionScheme = scheme
+				value.data = compressed
+				value.lockId = nil
+
+				return "succeed", value
+			end)
+		end)
 end
 
 --[=[

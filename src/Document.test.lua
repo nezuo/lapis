@@ -44,11 +44,14 @@ return function(x)
 		local pendingSave = document:save()
 		local pendingClose = document:close() -- This should override the pending save.
 
+		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.UpdateAsync] = 1
+
 		context.dataStoreService.yield:stopYield()
 
-		assert(pendingSave == pendingClose, "save and close didn't merge")
+		local values = Promise.all({ ongoingSave, pendingSave }):expect()
 
-		local values = Promise.all({ ongoingSave, pendingSave, pendingClose }):expect()
+		-- If the save and close don't merge, this will throw because there isn't enough budget to close.
+		pendingClose:now("save and close didn't merge"):expect()
 
 		-- save and close should never resolve with a value.
 		-- It's checked in this test to make sure it works with save merging.
@@ -221,7 +224,7 @@ return function(x)
 			end)
 
 			shouldThrow(function()
-				document:close()
+				document:close():expect()
 			end, "beforeClose callback threw error")
 		end)
 
@@ -233,11 +236,11 @@ return function(x)
 			end)
 
 			shouldThrow(function()
-				document:close()
+				document:close():expect()
 			end, "beforeClose callback threw error")
 		end)
 
-		x.test("closes document even if document error", function(context)
+		x.test("closes document even if beforeClose errors", function(context)
 			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 
 			local promise = collection:load("document")
@@ -248,14 +251,19 @@ return function(x)
 			end)
 
 			shouldThrow(function()
-				document:close()
+				document:close():expect()
 			end)
 
-			assert(collection:load("document") ~= promise, "collection:load should return a new promise")
+			local secondPromise = collection:load("document")
+
+			assert(secondPromise ~= promise, "collection:load should return a new promise")
 
 			shouldThrow(function()
 				document:write({ foo = "baz" })
 			end, "Cannot write to a closed document")
+
+			-- Ignore the could not acquire lock error.
+			secondPromise:catch(function() end)
 		end)
 
 		x.test("saves new data", function(context)
