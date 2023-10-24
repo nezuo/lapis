@@ -35,10 +35,14 @@ end
 --[=[
 	Loads the document with `key`, migrates it, and session locks it.
 
+	If specified, the document's `DataStoreKeyInfo:GetUserIds()` will be set to `defaultUserIds` if the document has
+	never been loaded.
+
 	@param key string
+	@param defaultUserIds {number}?
 	@return Promise<Document>
 ]=]
-function Collection:load(key)
+function Collection:load(key, defaultUserIds)
 	if self.openDocuments[key] == nil then
 		local lockId = HttpService:GenerateGUID(false)
 
@@ -46,13 +50,14 @@ function Collection:load(key)
 			.data
 			:load(self.dataStore, key, function(value, keyInfo)
 				if value == nil then
-					return "succeed",
-						{
-							compressionScheme = "None",
-							migrationVersion = #self.options.migrations,
-							lockId = lockId,
-							data = self.options.defaultData,
-						}
+					local data = {
+						compressionScheme = "None",
+						migrationVersion = #self.options.migrations,
+						lockId = lockId,
+						data = self.options.defaultData,
+					}
+
+					return "succeed", data, defaultUserIds
 				end
 
 				if value.migrationVersion > #self.options.migrations then
@@ -70,15 +75,16 @@ function Collection:load(key)
 				local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, decompressed)
 				local scheme, compressed = Compression.compress(migrated)
 
-				return "succeed",
-					{
-						compressionScheme = scheme,
-						migrationVersion = #self.options.migrations,
-						lockId = lockId,
-						data = compressed,
-					}
+				local data = {
+					compressionScheme = scheme,
+					migrationVersion = #self.options.migrations,
+					lockId = lockId,
+					data = compressed,
+				}
+
+				return "succeed", data, keyInfo:GetUserIds(), keyInfo:GetMetadata()
 			end)
-			:andThen(function(value)
+			:andThen(function(value, keyInfo)
 				local data = Compression.decompress(value.compressionScheme, value.data)
 
 				local ok, message = self.options.validate(data)
@@ -88,7 +94,7 @@ function Collection:load(key)
 
 				freezeDeep(data)
 
-				local document = Document.new(self, key, self.options.validate, lockId, data)
+				local document = Document.new(self, key, self.options.validate, lockId, data, keyInfo:GetUserIds())
 
 				self.autoSave:addDocument(document)
 

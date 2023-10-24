@@ -8,13 +8,14 @@ local Promise = require(script.Parent.Parent.Promise)
 local Document = {}
 Document.__index = Document
 
-function Document.new(collection, key, validate, lockId, data)
+function Document.new(collection, key, validate, lockId, data, userIds)
 	return setmetatable({
 		collection = collection,
 		key = key,
 		validate = validate,
 		lockId = lockId,
 		data = data,
+		userIds = userIds,
 		closed = false,
 		callingBeforeClose = false,
 	}, Document)
@@ -48,6 +49,34 @@ function Document:write(data)
 end
 
 --[=[
+	Adds a user id to the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is saved or closed.
+
+	If the user id is already associated with the document the method won't do anything.
+
+	@param userId number
+]=]
+function Document:addUserId(userId)
+	if table.find(self.userIds, userId) == nil then
+		table.insert(self.userIds, userId)
+	end
+end
+
+--[=[
+	Removes a user id from the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is saved or closed.
+
+	If the user id is not associated with the document the method won't do anything.
+
+	@param userId number
+]=]
+function Document:removeUserId(userId)
+	local index = table.find(self.userIds, userId)
+
+	if index ~= nil then
+		table.remove(self.userIds, index)
+	end
+end
+
+--[=[
 	Saves the document's data. If the save is throttled and you call it multiple times, it will save only once with the latest data.
 
 	:::warning
@@ -69,7 +98,7 @@ function Document:save()
 		value.compressionScheme = scheme
 		value.data = compressed
 
-		return "succeed", value
+		return "succeed", value, self.userIds
 	end)
 end
 
@@ -126,7 +155,7 @@ function Document:close()
 				value.data = compressed
 				value.lockId = nil
 
-				return "succeed", value
+				return "succeed", value, self.userIds
 			end)
 		end)
 end

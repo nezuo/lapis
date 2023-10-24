@@ -25,12 +25,14 @@ export type CollectionOptions<T> = {
 }
 
 export type Collection<T> = {
-	load: (self: Collection<T>, key: string) -> PromiseTypes.TypedPromise<Document<T>>,
+	load: (self: Collection<T>, key: string, defaultUserIds: { number }?) -> PromiseTypes.TypedPromise<Document<T>>,
 }
 
 export type Document<T> = {
 	read: (self: Document<T>) -> T,
 	write: (self: Document<T>, T) -> (),
+	addUserId: (self: Document<T>, userId: number) -> (),
+	removeUserId: (self: Document<T>, userId: number) -> (),
 	save: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
 	close: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
 	beforeClose: (self: Document<T>, callback: () -> ()) -> (),
