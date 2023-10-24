@@ -41,6 +41,22 @@ return function(x)
 		context.read = function(name, key)
 			return dataStoreService.dataStores[name]["global"].data[key]
 		end
+
+		context.expectUserIds = function(name, key, targetUserIds)
+			local keyInfo = dataStoreService.dataStores[name]["global"].keyInfos[key]
+
+			local currentUserIds = if keyInfo ~= nil then keyInfo:GetUserIds() else {}
+
+			if #currentUserIds ~= #targetUserIds then
+				error("Incorrect user ids length")
+			end
+
+			for index, value in targetUserIds do
+				if currentUserIds[index] ~= value then
+					error("Invalid user id")
+				end
+			end
+		end
 	end)
 
 	x.test("throws when setting invalid config key", function(context)
@@ -96,7 +112,7 @@ return function(x)
 
 	x.test("should session lock the document", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
-		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
+		local document = collection:load("doc"):expect()
 
 		local otherLapis = Internal.new(false)
 		otherLapis.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
@@ -122,7 +138,7 @@ return function(x)
 
 	x.test("load should retry when document is session locked", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
-		local document = collection:load("doc", DEFAULT_OPTIONS):expect()
+		local document = collection:load("doc"):expect()
 
 		local otherLapis = Internal.new(false)
 		otherLapis.setConfig({
@@ -258,5 +274,61 @@ return function(x)
 		task.wait(0.1)
 
 		assert(coroutine.status(thread) == "dead", "")
+	end)
+
+	x.nested("user ids", function()
+		x.test("it uses defaultUserIds on first load", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			local document = collection:load("document", { 123 }):expect()
+			context.expectUserIds("collection", "document", { 123 })
+			document:close():expect()
+			context.expectUserIds("collection", "document", { 123 })
+
+			-- Since the document has already been created, the defaultUserIds should not override the saved ones.
+			document = collection:load("document", { 321 }):expect()
+			context.expectUserIds("collection", "document", { 123 })
+			document:close():expect()
+			context.expectUserIds("collection", "document", { 123 })
+		end)
+
+		x.test("adds new user ids", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			local document = collection:load("document", {}):expect()
+
+			document:addUserId(111)
+			document:addUserId(111) -- It should not add this user id twice.
+			document:addUserId(222)
+
+			context.expectUserIds("collection", "document", {})
+
+			document:save():expect()
+
+			context.expectUserIds("collection", "document", { 111, 222 })
+
+			document:close():expect()
+
+			context.expectUserIds("collection", "document", { 111, 222 })
+		end)
+
+		x.test("removes new user ids", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			local document = collection:load("document", { 333, 444, 555 }):expect()
+
+			document:removeUserId(111) -- It should do nothing if the user id doesn't exist.
+			document:removeUserId(444)
+
+			context.expectUserIds("collection", "document", { 333, 444, 555 })
+
+			document:save():expect()
+
+			context.expectUserIds("collection", "document", { 333, 555 })
+
+			document:close():expect()
+
+			context.expectUserIds("collection", "document", { 333, 555 })
+		end)
 	end)
 end
