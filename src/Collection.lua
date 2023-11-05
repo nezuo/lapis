@@ -1,4 +1,5 @@
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 local Compression = require(script.Parent.Compression)
 local Document = require(script.Parent.Document)
@@ -23,6 +24,7 @@ function Collection.new(name, options, data, autoSave, config)
 
 	options.migrations = options.migrations or {}
 	options.lockExpireTime = options.lockExpireTime or DEFAULT_LOCK_EXPIRE
+	options.disableLockInStudio = if options.disableLockInStudio ~= nil then options.disableLockInStudio else false
 
 	return setmetatable({
 		dataStore = config:get("dataStoreService"):GetDataStore(name),
@@ -60,8 +62,11 @@ function Collection:load(key)
 					return "fail", "Saved migration version ahead of latest version"
 				end
 
+				local lockDisabled = if self.options.disableLockInStudio then RunService:IsStudio() else false
+
 				if
-					value.lockId ~= nil
+					not lockDisabled
+					and value.lockId ~= nil
 					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < self.options.lockExpireTime
 				then
 					return "retry", "Could not acquire lock"

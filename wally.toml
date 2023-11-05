@@ -1,5 +1,5 @@
 [package]
-name = "nezuo/lapis"
+name = "davidnurkkala/lapis"
 version = "0.2.4"
 registry = "https://github.com/UpliftGames/wally-index"
 exclude = ["**"]
