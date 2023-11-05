@@ -1,6 +1,6 @@
 [package]
 name = "davidnurkkala/lapis"
-version = "0.2.4"
+version = "0.2.6"
 registry = "https://github.com/UpliftGames/wally-index"
 exclude = ["**"]
 include = ["src", "src/*", "default.project.json", "wally.toml", "LICENSE"]
@@ -10,5 +10,5 @@ realm = "server"
 Promise = "evaera/promise@4.0.0"
 
 [dev-dependencies]
-TestEZ = "roblox/testez@0.4.1"
-DataStoreServiceMock = "nezuo/data-store-service-mock@0.3.0"
+Midori = "nezuo/midori@0.1.3"
+DataStoreServiceMock = "nezuo/data-store-service-mock@0.3.5"

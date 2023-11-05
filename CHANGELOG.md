@@ -2,8 +2,27 @@
 
 ## Unreleased Changes
 
+## 0.2.6 - October 24, 2023
+* Added types ([#24])
+* Added `document:beforeClose` callback to make final changes to a document before it closes ([#25])
+  * This callback works even when the document is closed by `game:BindToClose`.
+* Added APIs to set a document's `DataStoreKeyInfo:GetUserIds()` ([#26])
+  * Changed `Collection:load(key: string)` to `Collection:load(key: string, defaultUserIds: {number}?)`
+    * `defaultUserIds` only applies if it's the first time the document has ever been loaded.
+  * Added `Document:addUserId(userId: number)`
+  * Added `Document:removeUserId(userId: number)`
+
+[#24]: https://github.com/nezuo/lapis/pull/24
+[#25]: https://github.com/nezuo/lapis/pull/25
+[#26]: https://github.com/nezuo/lapis/pull/26
+
+## 0.2.5 - September 8, 2023
+* Fix existing data not being frozen on load ([#20])
+
+[#20]: https://github.com/nezuo/lapis/pull/20
+
 ## 0.2.4 - August 3, 2023
-* Fix `game:BindToClose` not waiting for documents to close.
+* Fix `game:BindToClose` not waiting for documents to close
 
 ## 0.2.3 - July 19, 2023
 * Fix silly mistake where I don't return the collection from `createCollection`

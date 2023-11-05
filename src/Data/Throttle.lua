@@ -4,14 +4,16 @@ local Promise = require(script.Parent.Parent.Parent.Promise)
 
 local function updateAsync(request)
 	return Promise.new(function(resolve)
-		local result, transformed
-
+		local resultOutside, transformedOutside, keyInfo
 		local ok, err = pcall(function()
-			request.dataStore:UpdateAsync(request.key, function(...)
-				result, transformed = request.transform(...)
+			_, keyInfo = request.dataStore:UpdateAsync(request.key, function(...)
+				local result, transformed, userIds = request.transform(...)
+
+				resultOutside = result
+				transformedOutside = transformed
 
 				if result == "succeed" then
-					return transformed
+					return transformed, userIds
 				else
 					return nil
 				end
@@ -21,7 +23,7 @@ local function updateAsync(request)
 		if not ok then
 			resolve("retry", err)
 		else
-			resolve(result, transformed)
+			resolve(resultOutside, transformedOutside, keyInfo)
 		end
 	end)
 end
@@ -59,10 +61,10 @@ function Throttle:start()
 				continue
 			end
 
-			local promise = updateAsync(request):andThen(function(result, value)
+			local promise = updateAsync(request):andThen(function(result, value, keyInfo)
 				if result == "succeed" then
 					request.attempts = 0
-					request.resolve(value)
+					request.resolve(value, keyInfo)
 				elseif result == "fail" then
 					request.attempts = 0
 					request.reject(`DataStoreFailure({value})`)
