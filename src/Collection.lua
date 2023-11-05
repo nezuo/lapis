@@ -1,4 +1,5 @@
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 local Compression = require(script.Parent.Compression)
 local Document = require(script.Parent.Document)
@@ -6,7 +7,7 @@ local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
 
-local LOCK_EXPIRE = 30 * 60
+local DEFAULT_LOCK_EXPIRE = 30 * 60
 
 --[=[
 	Collections are analagous to [GlobalDataStore].
@@ -22,6 +23,8 @@ function Collection.new(name, options, data, autoSave, config)
 	freezeDeep(options.defaultData)
 
 	options.migrations = options.migrations or {}
+	options.lockExpireTime = options.lockExpireTime or DEFAULT_LOCK_EXPIRE
+	options.disableLockInStudio = if options.disableLockInStudio ~= nil then options.disableLockInStudio else false
 
 	return setmetatable({
 		dataStore = config:get("dataStoreService"):GetDataStore(name),
@@ -64,9 +67,12 @@ function Collection:load(key, defaultUserIds)
 					return "fail", "Saved migration version ahead of latest version"
 				end
 
+				local lockDisabled = if self.options.disableLockInStudio then RunService:IsStudio() else false
+
 				if
-					value.lockId ~= nil
-					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE
+					not lockDisabled
+					and value.lockId ~= nil
+					and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < self.options.lockExpireTime
 				then
 					return "retry", "Could not acquire lock"
 				end
