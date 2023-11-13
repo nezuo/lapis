@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Removed internal compression code since compression is no longer planned ([#31])
+
+[#31]: https://github.com/nezuo/lapis/pull/31
 
 ## 0.2.7 - November 12, 2023
 * Add `Document:beforeSave` callback to make changes to a document before it saves ([#29])
