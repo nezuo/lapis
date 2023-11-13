@@ -31,7 +31,6 @@ return function(x)
 			local dataStore = dataStoreService.dataStores[name]["global"]
 
 			dataStore:write(key, {
-				compressionScheme = "None",
 				migrationVersion = 0,
 				lockId = lockId,
 				data = data,
@@ -220,7 +219,6 @@ return function(x)
 
 		local dataStore = context.dataStoreService.dataStores.collection.global
 		dataStore:write("document", {
-			compressionScheme = "None",
 			migrationVersion = 1,
 			data = "b",
 		})

@@ -1,4 +1,3 @@
-local Compression = require(script.Parent.Compression)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Promise = require(script.Parent.Parent.Promise)
 
@@ -114,10 +113,7 @@ function Document:save()
 				return "fail", "The session lock was stolen"
 			end
 
-			local scheme, compressed = Compression.compress(self.data)
-
-			value.compressionScheme = scheme
-			value.data = compressed
+			value.data = self.data
 
 			return "succeed", value, self.userIds
 		end)
@@ -158,10 +154,7 @@ function Document:close()
 					return "fail", "The session lock was stolen"
 				end
 
-				local scheme, compressed = Compression.compress(self.data)
-
-				value.compressionScheme = scheme
-				value.data = compressed
+				value.data = self.data
 				value.lockId = nil
 
 				return "succeed", value, self.userIds

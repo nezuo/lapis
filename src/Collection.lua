@@ -1,6 +1,5 @@
 local HttpService = game:GetService("HttpService")
 
-local Compression = require(script.Parent.Compression)
 local Document = require(script.Parent.Document)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
@@ -51,7 +50,6 @@ function Collection:load(key, defaultUserIds)
 			:load(self.dataStore, key, function(value, keyInfo)
 				if value == nil then
 					local data = {
-						compressionScheme = "None",
 						migrationVersion = #self.options.migrations,
 						lockId = lockId,
 						data = self.options.defaultData,
@@ -71,21 +69,17 @@ function Collection:load(key, defaultUserIds)
 					return "retry", "Could not acquire lock"
 				end
 
-				local decompressed = Compression.decompress(value.compressionScheme, value.data)
-				local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, decompressed)
-				local scheme, compressed = Compression.compress(migrated)
-
+				local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, value.data)
 				local data = {
-					compressionScheme = scheme,
 					migrationVersion = #self.options.migrations,
 					lockId = lockId,
-					data = compressed,
+					data = migrated,
 				}
 
 				return "succeed", data, keyInfo:GetUserIds(), keyInfo:GetMetadata()
 			end)
 			:andThen(function(value, keyInfo)
-				local data = Compression.decompress(value.compressionScheme, value.data)
+				local data = value.data
 
 				local ok, message = self.options.validate(data)
 				if not ok then
