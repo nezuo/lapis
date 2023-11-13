@@ -99,6 +99,10 @@ end
 	Throws an error if the document was closed.
 	:::
 
+	:::warning
+	If the beforeSave callback errors, the returned promise will reject and the data will not be saved.
+	:::
+
 	@return Promise<()>
 ]=]
 function Document:save()
