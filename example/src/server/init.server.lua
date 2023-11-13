@@ -20,7 +20,7 @@ local collection = Lapis.createCollection("PlayerData", {
 local documents = {}
 
 Players.PlayerAdded:Connect(function(player)
-	local ok, document = collection:load(`Player{player.UserId}`):await()
+	local ok, document = collection:load(`Player{player.UserId}`, { player.UserId }):await()
 
 	if player.Parent == nil then
 		if ok then
