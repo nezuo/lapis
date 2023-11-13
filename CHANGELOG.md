@@ -1,7 +1,7 @@
 # Lapis Changelog
 
 ## Unreleased Changes
-* Add `Document:beforeClose` callback to make changes to a document before it saves ([#29])
+* Add `Document:beforeSave` callback to make changes to a document before it saves ([#29])
 
 [#29]: https://github.com/nezuo/lapis/pull/29
 
