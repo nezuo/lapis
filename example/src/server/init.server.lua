@@ -19,32 +19,34 @@ local collection = Lapis.createCollection("PlayerData", {
 
 local documents = {}
 
+local function addCoin(document)
+	local old = document:read()
+
+	document:write({
+		level = old.level,
+		xp = old.xp,
+		coins = old.coins + 1,
+	})
+
+	print(`Player has {old.coins} coins`)
+end
+
 Players.PlayerAdded:Connect(function(player)
-	local ok, document = collection:load(`Player{player.UserId}`):await()
+	collection
+		:load(`Player{player.UserId}`, { player.UserId })
+		:andThen(function(document)
+			if player.Parent == nil then
+				document:close():catch(warn)
+				return
+			end
 
-	if player.Parent == nil then
-		if ok then
-			document:close()
-		end
+			documents[player] = document
 
-		return
-	end
-
-	if ok then
-		local old = document:read()
-
-		print(`Player has {old.coins} coins`)
-
-		document:write({
-			level = old.level,
-			xp = old.xp,
-			coins = old.coins + 1,
-		})
-
-		documents[player] = document
-	else
-		warn(`Player {player.Name}'s data failed to load`)
-	end
+			addCoin(document)
+		end)
+		:catch(function(message)
+			warn(`Player {player.Name}'s data failed to load: {message}`)
+		end)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
