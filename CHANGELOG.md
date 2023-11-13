@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Add `Document:beforeSave` callback to make changes to a document before it saves ([#29])
+
+[#29]: https://github.com/nezuo/lapis/pull/29
 
 ## 0.2.6 - October 24, 2023
 * Added types ([#24])

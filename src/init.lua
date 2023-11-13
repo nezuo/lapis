@@ -35,6 +35,7 @@ export type Document<T> = {
 	removeUserId: (self: Document<T>, userId: number) -> (),
 	save: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
 	close: (self: Document<T>) -> PromiseTypes.TypedPromise<()>,
+	beforeSave: (self: Document<T>, callback: () -> ()) -> (),
 	beforeClose: (self: Document<T>, callback: () -> ()) -> (),
 }
 

@@ -2,6 +2,22 @@ local Compression = require(script.Parent.Compression)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Promise = require(script.Parent.Parent.Promise)
 
+local function runCallback(name, callback)
+	if callback == nil then
+		return Promise.resolve()
+	end
+
+	return Promise.new(function(resolve, reject)
+		local ok, message = pcall(callback)
+
+		if not ok then
+			reject(`{name} callback threw error: {message}`)
+		else
+			resolve()
+		end
+	end)
+end
+
 --[=[
 	@class Document
 ]=]
@@ -17,7 +33,7 @@ function Document.new(collection, key, validate, lockId, data, userIds)
 		data = data,
 		userIds = userIds,
 		closed = false,
-		callingBeforeClose = false,
+		callingCloseCallbacks = false,
 	}, Document)
 end
 
@@ -83,22 +99,28 @@ end
 	Throws an error if the document was closed.
 	:::
 
+	:::warning
+	If the beforeSave callback errors, the returned promise will reject and the data will not be saved.
+	:::
+
 	@return Promise<()>
 ]=]
 function Document:save()
-	assert(not self.closed and not self.callingBeforeClose, "Cannot save a closed document")
+	assert(not self.closed and not self.callingCloseCallbacks, "Cannot save a closed document")
 
-	return self.collection.data:save(self.collection.dataStore, self.key, function(value)
-		if value.lockId ~= self.lockId then
-			return "fail", "The session lock was stolen"
-		end
+	return runCallback("beforeSave", self.beforeSaveCallback):andThen(function()
+		return self.collection.data:save(self.collection.dataStore, self.key, function(value)
+			if value.lockId ~= self.lockId then
+				return "fail", "The session lock was stolen"
+			end
 
-		local scheme, compressed = Compression.compress(self.data)
+			local scheme, compressed = Compression.compress(self.data)
 
-		value.compressionScheme = scheme
-		value.data = compressed
+			value.compressionScheme = scheme
+			value.data = compressed
 
-		return "succeed", value, self.userIds
+			return "succeed", value, self.userIds
+		end)
 	end)
 end
 
@@ -111,31 +133,18 @@ end
 	:::
 
 	:::warning
-	If the beforeClose callback errors, the returned promise will reject and the data will not be saved.
+	If the beforeSave or beforeClose callbacks error, the returned promise will reject and the data will not be saved.
 	:::
 
 	@return Promise<()>
 ]=]
 function Document:close()
-	assert(not self.closed and not self.callingBeforeClose, "Cannot close a closed document")
+	assert(not self.closed and not self.callingCloseCallbacks, "Cannot close a closed document")
 
-	local promise = Promise.resolve()
+	self.callingCloseCallbacks = true
 
-	if self.beforeCloseCallback ~= nil then
-		self.callingBeforeClose = true
-
-		promise = Promise.new(function(resolve, reject)
-			local ok, err = pcall(self.beforeCloseCallback)
-
-			if not ok then
-				reject(`beforeClose callback threw error: {tostring(err)}`)
-			else
-				resolve()
-			end
-		end)
-	end
-
-	return promise
+	return runCallback("beforeSave", self.beforeSaveCallback)
+		:andThenCall(runCallback, "beforeClose", self.beforeCloseCallback)
 		:finally(function()
 			self.closed = true
 
@@ -158,6 +167,24 @@ function Document:close()
 				return "succeed", value, self.userIds
 			end)
 		end)
+end
+
+--[=[
+	Sets a callback that is run inside `document:save` and `document:close` before it saves. The document can be read and written to in the
+	callback.
+
+	The callback will run before the beforeClose callback inside of `document:close`.
+
+	:::warning
+	Throws an error if it was called previously.
+	:::
+
+	@param callback () -> ()
+]=]
+function Document:beforeSave(callback)
+	assert(self.beforeSaveCallback == nil, "Document:beforeSave can only be called once")
+
+	self.beforeSaveCallback = callback
 end
 
 --[=[

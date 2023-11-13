@@ -44,13 +44,16 @@ return function(x)
 		local pendingSave = document:save()
 		local pendingClose = document:close() -- This should override the pending save.
 
-		context.dataStoreService.budget.budgets[Enum.DataStoreRequestType.UpdateAsync] = 1
-
 		context.dataStoreService.yield:stopYield()
 
 		local values = Promise.all({ ongoingSave, pendingSave }):expect()
 
-		-- If the save and close don't merge, this will throw because there isn't enough budget to close.
+		-- This stops the close if it wasn't merged.
+		context.dataStoreService.yield:startYield()
+
+		-- Since the following code is resumed by the save promise, we need to wait for the close promise to resolve.
+		task.wait()
+
 		pendingClose:now("save and close didn't merge"):expect()
 
 		-- save and close should never resolve with a value.
@@ -205,6 +208,67 @@ return function(x)
 		promise:expect()
 	end)
 
+	x.nested("Document:beforeSave", function()
+		x.test("throws when setting twice", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeSave(function() end)
+
+			shouldThrow(function()
+				document:beforeSave(function() end)
+			end, "Document:beforeSave can only be called once")
+		end)
+
+		x.test("throws when calling close in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeSave(function()
+				document:close()
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "beforeSave callback threw error")
+		end)
+
+		x.test("throws when calling save in callback", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeSave(function()
+				document:save()
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "beforeSave callback threw error")
+		end)
+
+		x.test("saves new data in document:save", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeSave(function()
+				document:read() -- This checks that read doesn't error in the callback.
+				document:write({ foo = "new" })
+			end)
+
+			document:save():expect()
+
+			assertEqual(context.read("collection", "document").data.foo, "new")
+		end)
+
+		x.test("saves new data in document:close", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			document:beforeSave(function()
+				document:write({ foo = "new" })
+			end)
+
+			document:close():expect()
+
+			assertEqual(context.read("collection", "document").data.foo, "new")
+		end)
+	end)
+
 	x.nested("Document:beforeClose", function()
 		x.test("throws when setting twice", function(context)
 			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
@@ -278,6 +342,24 @@ return function(x)
 			document:close():expect()
 
 			assertEqual(context.read("collection", "document").data.foo, "new")
+		end)
+
+		x.test("beforeSave runs before beforeClose", function(context)
+			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+
+			local order = ""
+
+			document:beforeSave(function()
+				order ..= "s"
+			end)
+
+			document:beforeClose(function()
+				order ..= "c"
+			end)
+
+			document:close():expect()
+
+			assertEqual(order, "sc")
 		end)
 	end)
 end
