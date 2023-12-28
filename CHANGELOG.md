@@ -2,8 +2,10 @@
 
 ## Unreleased Changes
 * Removed internal compression code since compression is no longer planned ([#31])
+* Data is no longer loaded if it doesn't pass the `validate` function. This means it won't be session locked and migrated. ([#32])
 
 [#31]: https://github.com/nezuo/lapis/pull/31
+[#32]: https://github.com/nezuo/lapis/pull/32
 
 ## 0.2.7 - November 12, 2023
 * Add `Document:beforeSave` callback to make changes to a document before it saves ([#29])
