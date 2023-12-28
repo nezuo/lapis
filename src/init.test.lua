@@ -265,6 +265,7 @@ return function(x)
 
 		assert(coroutine.status(thread) == "suspended", "onGameClose didn't wait for the documents to finish closing")
 
+		-- Verify each document has been closed.
 		for _, document in { one, two, three } do
 			shouldThrow(function()
 				document:close():expect()
