@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.8 - December 27, 2023
 * Removed internal compression code since compression is no longer planned ([#31])
 * Data is no longer loaded if it doesn't pass the `validate` function. This means it won't be session locked and migrated. ([#32])
 
