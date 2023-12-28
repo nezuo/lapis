@@ -70,6 +70,12 @@ function Collection:load(key, defaultUserIds)
 				end
 
 				local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, value.data)
+
+				local ok, message = self.options.validate(migrated)
+				if not ok then
+					return "fail", `Invalid data: {message}`
+				end
+
 				local data = {
 					migrationVersion = #self.options.migrations,
 					lockId = lockId,
@@ -80,11 +86,6 @@ function Collection:load(key, defaultUserIds)
 			end)
 			:andThen(function(value, keyInfo)
 				local data = value.data
-
-				local ok, message = self.options.validate(data)
-				if not ok then
-					return Promise.reject(message)
-				end
 
 				freezeDeep(data)
 
