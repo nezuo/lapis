@@ -14,6 +14,7 @@ local DEFAULT_OPTIONS = {
 }
 
 return function(x)
+	local assertEqual = x.assertEqual
 	local shouldThrow = x.shouldThrow
 
 	x.beforeEach(function(context)
@@ -99,14 +100,18 @@ return function(x)
 		end, "data is invalid")
 	end)
 
-	x.test("throws when loading invalid data", function(context)
-		local collection = context.lapis.createCollection("apples", DEFAULT_OPTIONS)
+	x.test("should not override data if validation fails", function(context)
+		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 
-		context.write("apples", "a", { apples = "string" })
+		context.write("collection", "doc", { apples = "string" })
+
+		local old = context.read("collection", "doc")
 
 		shouldThrow(function()
-			collection:load("a"):expect()
+			collection:load("doc"):expect()
 		end, "apples should be a number")
+
+		assertEqual(old, context.read("collection", "doc"))
 	end)
 
 	x.test("should session lock the document", function(context)
