@@ -12,7 +12,7 @@ A Roblox DataStore abstraction that offers:
 This library was inspired by [Quicksave](https://github.com/evaera/Quicksave).
 
 ## Warning
-This is not yet meant for production.
+Lapis has not been battle-tested in a large production game yet. It may contain obscure bugs so use at your own risk.
 
 ## To do
 - Add tests for auto-saving and `game:BindToClose`
