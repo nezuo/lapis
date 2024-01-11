@@ -101,7 +101,7 @@ return function(x)
 		end, "foo must be a string")
 	end)
 
-	x.test("throws when writing/saving/closing a closed document", function(context)
+	x.test("methods throw when called on a closed document", function(context)
 		local document = context.lapis.createCollection("5", DEFAULT_OPTIONS):load("doc"):expect()
 
 		local promise = document:close()
@@ -115,10 +115,22 @@ return function(x)
 		end, "Cannot save a closed document")
 
 		shouldThrow(function()
-			document:close()
-		end, "Cannot close a closed document")
+			document:addUserId(1234)
+		end, "Cannot add user id to a closed document")
+
+		shouldThrow(function()
+			document:removeUserId(1234)
+		end, "Cannot remove user id from a closed document")
 
 		promise:expect()
+	end)
+
+	x.test("close returns first promise when called again", function(context)
+		local document = context.lapis.createCollection("col", DEFAULT_OPTIONS):load("doc"):expect()
+
+		local promise = document:close()
+
+		assertEqual(promise, document:close())
 	end)
 
 	x.test("loads with default data", function(context)
