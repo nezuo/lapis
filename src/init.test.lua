@@ -268,8 +268,8 @@ return function(x)
 		-- Verify each document has been closed.
 		for _, document in { one, two, three } do
 			shouldThrow(function()
-				document:close():expect()
-			end, "Cannot close a closed document")
+				document:save():expect()
+			end, "Cannot save a closed document")
 		end
 
 		context.dataStoreService.yield:stopYield()

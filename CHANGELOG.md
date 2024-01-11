@@ -1,6 +1,10 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* `Document:close` no longer errors when called again and instead returns the original promise. ([#35])
+  * This is so it won't error when called from `PlayerRemoving` if `game:BindToClose` happens to run first.
+
+[#35]: https://github.com/nezuo/lapis/pull/35
 
 ## 0.2.8 - December 27, 2023
 * Removed internal compression code since compression is no longer planned ([#31])

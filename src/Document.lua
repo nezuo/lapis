@@ -1,13 +1,17 @@
 local freezeDeep = require(script.Parent.freezeDeep)
 local Promise = require(script.Parent.Parent.Promise)
 
-local function runCallback(name, callback)
+local function runCallback(document, name, callback)
 	if callback == nil then
 		return Promise.resolve()
 	end
 
+	document.callingCallback = name
+
 	return Promise.new(function(resolve, reject)
 		local ok, message = pcall(callback)
+
+		document.callingCallback = nil
 
 		if not ok then
 			reject(`{name} callback threw error: {message}`)
@@ -32,7 +36,6 @@ function Document.new(collection, key, validate, lockId, data, userIds)
 		data = data,
 		userIds = userIds,
 		closed = false,
-		callingCloseCallbacks = false,
 	}, Document)
 end
 
@@ -71,6 +74,8 @@ end
 	@param userId number
 ]=]
 function Document:addUserId(userId)
+	assert(not self.closed, "Cannot add user id to a closed document")
+
 	if table.find(self.userIds, userId) == nil then
 		table.insert(self.userIds, userId)
 	end
@@ -84,6 +89,8 @@ end
 	@param userId number
 ]=]
 function Document:removeUserId(userId)
+	assert(not self.closed, "Cannot remove user id from a closed document")
+
 	local index = table.find(self.userIds, userId)
 
 	if index ~= nil then
@@ -105,9 +112,10 @@ end
 	@return Promise<()>
 ]=]
 function Document:save()
-	assert(not self.closed and not self.callingCloseCallbacks, "Cannot save a closed document")
+	assert(not self.closed, "Cannot save a closed document")
+	assert(self.callingCallback == nil, `Cannot save in {self.callingCallback} callback`)
 
-	return runCallback("beforeSave", self.beforeSaveCallback):andThen(function()
+	return runCallback(self, "beforeSave", self.beforeSaveCallback):andThen(function()
 		return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 			if value.lockId ~= self.lockId then
 				return "fail", "The session lock was stolen"
@@ -124,9 +132,7 @@ end
 	Saves the document and removes the session lock. The document is unusable after calling. If a save is currently in
 	progress it will close the document instead.
 
-	:::warning
-	Throws an error if the document was closed.
-	:::
+	If called again, it will return the promise from the original call.
 
 	:::warning
 	If the beforeSave or beforeClose callbacks error, the returned promise will reject and the data will not be saved.
@@ -135,31 +141,33 @@ end
 	@return Promise<()>
 ]=]
 function Document:close()
-	assert(not self.closed and not self.callingCloseCallbacks, "Cannot close a closed document")
+	assert(self.callingCallback == nil, `Cannot close in {self.callingCallback} callback`)
 
-	self.callingCloseCallbacks = true
+	if self.closePromise == nil then
+		self.closePromise = runCallback(self, "beforeSave", self.beforeSaveCallback)
+			:andThenCall(runCallback, self, "beforeClose", self.beforeCloseCallback)
+			:finally(function()
+				self.closed = true
 
-	return runCallback("beforeSave", self.beforeSaveCallback)
-		:andThenCall(runCallback, "beforeClose", self.beforeCloseCallback)
-		:finally(function()
-			self.closed = true
+				self.collection.openDocuments[self.key] = nil
 
-			self.collection.openDocuments[self.key] = nil
-
-			self.collection.autoSave:removeDocument(self)
-		end)
-		:andThen(function()
-			return self.collection.data:save(self.collection.dataStore, self.key, function(value)
-				if value.lockId ~= self.lockId then
-					return "fail", "The session lock was stolen"
-				end
-
-				value.data = self.data
-				value.lockId = nil
-
-				return "succeed", value, self.userIds
+				self.collection.autoSave:removeDocument(self)
 			end)
-		end)
+			:andThen(function()
+				return self.collection.data:save(self.collection.dataStore, self.key, function(value)
+					if value.lockId ~= self.lockId then
+						return "fail", "The session lock was stolen"
+					end
+
+					value.data = self.data
+					value.lockId = nil
+
+					return "succeed", value, self.userIds
+				end)
+			end)
+	end
+
+	return self.closePromise
 end
 
 --[=[
