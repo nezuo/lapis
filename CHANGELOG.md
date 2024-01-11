@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.9 - January 1, 2024
 * `Document:close` no longer errors when called again and instead returns the original promise. ([#35])
   * This is so it won't error when called from `PlayerRemoving` if `game:BindToClose` happens to run first.
 
