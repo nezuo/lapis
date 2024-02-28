@@ -2,11 +2,16 @@ local RunService = game:GetService("RunService")
 
 local Promise = require(script.Parent.Parent.Parent.Promise)
 
-local function updateAsync(request)
+local function updateAsync(throttle, request)
 	return Promise.new(function(resolve)
 		local resultOutside, transformedOutside, keyInfo
 		local ok, err = pcall(function()
 			_, keyInfo = request.dataStore:UpdateAsync(request.key, function(...)
+				if request.cancelOnGameClose and throttle.gameClosed then
+					resultOutside = "cancelled"
+					return nil
+				end
+
 				local result, transformed, userIds = request.transform(...)
 
 				resultOutside = result
@@ -20,7 +25,9 @@ local function updateAsync(request)
 			end)
 		end)
 
-		if not ok then
+		if resultOutside == "cancelled" then
+			resolve("cancelled")
+		elseif not ok then
 			resolve("retry", err)
 		else
 			resolve(resultOutside, transformedOutside, keyInfo)
@@ -35,6 +42,7 @@ function Throttle.new(config)
 	return setmetatable({
 		config = config,
 		queue = {},
+		gameClosed = false,
 	}, Throttle)
 end
 
@@ -49,6 +57,9 @@ function Throttle:start()
 
 			if request.attempts == 0 then
 				table.remove(self.queue, index)
+			elseif request.promise == nil and request.cancelOnGameClose and self.gameClosed then
+				request.resolve("cancelled")
+				table.remove(self.queue, index)
 			end
 		end
 
@@ -61,8 +72,11 @@ function Throttle:start()
 				continue
 			end
 
-			local promise = updateAsync(request):andThen(function(result, value, keyInfo)
-				if result == "succeed" then
+			local promise = updateAsync(self, request):andThen(function(result, value, keyInfo)
+				if result == "cancelled" then
+					request.attempts = 0
+					request.resolve("cancelled")
+				elseif result == "succeed" then
 					request.attempts = 0
 					request.resolve(value, keyInfo)
 				elseif result == "fail" then
@@ -94,7 +108,7 @@ function Throttle:start()
 	end)
 end
 
-function Throttle:updateAsync(dataStore, key, transform, retryAttempts, retryDelay)
+function Throttle:updateAsync(dataStore, key, transform, cancelOnGameClose, retryAttempts, retryDelay)
 	return Promise.new(function(resolve, reject)
 		table.insert(self.queue, {
 			dataStore = dataStore,
@@ -102,6 +116,7 @@ function Throttle:updateAsync(dataStore, key, transform, retryAttempts, retryDel
 			transform = transform,
 			attempts = retryAttempts,
 			retryDelay = retryDelay,
+			cancelOnGameClose = cancelOnGameClose,
 			resolve = resolve,
 			reject = reject,
 		})

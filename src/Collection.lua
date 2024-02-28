@@ -42,8 +42,15 @@ end
 	@return Promise<Document>
 ]=]
 function Collection:load(key, defaultUserIds)
+	if self.autoSave.gameClosed then
+		-- If game:BindToClose has been called, this infinitely yields so the document can't load.
+		return Promise.new(function() end)
+	end
+
 	if self.openDocuments[key] == nil then
 		local lockId = HttpService:GenerateGUID(false)
+
+		self.autoSave.ongoingLoads += 1
 
 		self.openDocuments[key] = self
 			.data
@@ -85,11 +92,25 @@ function Collection:load(key, defaultUserIds)
 				return "succeed", data, keyInfo:GetUserIds(), keyInfo:GetMetadata()
 			end)
 			:andThen(function(value, keyInfo)
+				if value == "cancelled" then
+					self.autoSave.ongoingLoads -= 1
+
+					-- Infinitely yield because the load was cancelled by game:BindToClose.
+					return Promise.new(function() end)
+				end
+
 				local data = value.data
 
 				freezeDeep(data)
 
 				local document = Document.new(self, key, self.options.validate, lockId, data, keyInfo:GetUserIds())
+
+				self.autoSave:finishLoad(document)
+
+				if self.autoSave.gameClosed then
+					-- Infinitely yield because the document will automatically be closed.
+					return Promise.new(function() end)
+				end
 
 				self.autoSave:addDocument(document)
 

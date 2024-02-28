@@ -42,6 +42,14 @@ return function(x)
 			return dataStoreService.dataStores[name]["global"].data[key]
 		end
 
+		context.expectUnlocked = function(name, key)
+			local data = dataStoreService.dataStores[name]["global"].data[key]
+
+			if data.lockId ~= nil then
+				error("Document is locked")
+			end
+		end
+
 		context.expectUserIds = function(name, key, targetUserIds)
 			local keyInfo = dataStoreService.dataStores[name]["global"].keyInfos[key]
 
@@ -333,6 +341,54 @@ return function(x)
 			document:close():expect()
 
 			context.expectUserIds("collection", "document", { 333, 555 })
+		end)
+	end)
+
+	x.nested("load during BindToClose", function()
+		x.test("load infinitely yields after BindToClose", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			task.spawn(function()
+				context.lapis.autoSave:onGameClose()
+			end)
+
+			shouldThrow(function()
+				collection:load("document"):timeout(0.5):expect()
+			end, "Timed out")
+		end)
+
+		x.test("load just before BindToClose", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			context.dataStoreService.yield:startYield()
+
+			collection:load("document")
+
+			local thread = task.spawn(function()
+				task.wait(0.1) -- Wait for load request to call UpdateAsync.
+				context.lapis.autoSave:onGameClose()
+			end)
+
+			assert(
+				coroutine.status(thread) == "suspended",
+				"onGameClose didn't wait for the documents to finish loading"
+			)
+
+			task.wait(0.2)
+
+			context.dataStoreService.yield:stopYield()
+
+			context.dataStoreService.yield:startYield()
+			assert(
+				coroutine.status(thread) == "suspended",
+				"onGameClose didn't wait for the documents to finish closing"
+			)
+			context.dataStoreService.yield:stopYield()
+
+			task.wait(0.1) -- Wait for document to finish closing.
+			context.expectUnlocked("collection", "document")
+
+			assert(coroutine.status(thread) == "dead", "")
 		end)
 	end)
 end
