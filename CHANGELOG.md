@@ -1,7 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
-* Documents loaded after `game:BindToClose` no longer load. If a document loads because UpdateAsync is called just before game close, it is automatically closed. ([#43])
+* `Document:load` now infinitely yields and doesn't load the document after `game:BindToClose` is called. If a document
+does load because UpdateAsync is called just before game close, it is automatically closed. ([#43])
 
 [#43]: https://github.com/nezuo/lapis/pull/43
 
