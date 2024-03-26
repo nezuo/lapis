@@ -19,6 +19,7 @@ function Internal.new(enableAutoSave)
 	local internal = {}
 
 	if not enableAutoSave then
+		-- This exposes AutoSave to unit tests.
 		internal.autoSave = autoSave
 	end
 

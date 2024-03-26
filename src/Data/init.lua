@@ -50,7 +50,7 @@ function Data:load(dataStore, key, transform)
 		local attempts = self.config:get("loadAttempts")
 		local retryDelay = self.config:get("loadRetryDelay")
 
-		return self.throttle:updateAsync(dataStore, key, transform, attempts, retryDelay)
+		return self.throttle:updateAsync(dataStore, key, transform, true, attempts, retryDelay)
 	end)
 end
 
@@ -65,7 +65,7 @@ function Data:save(dataStore, key, transform)
 		local attempts = self.config:get("saveAttempts")
 		local promise = self
 			.throttle
-			:updateAsync(dataStore, key, transform, attempts)
+			:updateAsync(dataStore, key, transform, false, attempts)
 			:andThenReturn() -- Save promise should not resolve with a value.
 			:finally(function()
 				self.ongoingSaves[dataStore][key] = nil
