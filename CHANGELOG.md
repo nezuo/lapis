@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.10 - March 25, 2024
 * `Document:load` now infinitely yields and doesn't load the document after `game:BindToClose` is called. If a document
 does load because UpdateAsync is called just before game close, it is automatically closed. ([#43])
 
