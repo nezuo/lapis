@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.2.11 - April 9, 2024
 * Fix infinite yield in `game:BindToClose` caused by a document failing to load. ([#45])
 
 [#45]: https://github.com/nezuo/lapis/pull/45
