@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Fix infinite yield in `game:BindToClose` caused by a document failing to load. ([#45])
+
+[#45]: https://github.com/nezuo/lapis/pull/45
 
 ## 0.2.10 - March 25, 2024
 * `Document:load` now infinitely yields and doesn't load the document after `game:BindToClose` is called. If a document

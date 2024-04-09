@@ -390,5 +390,21 @@ return function(x)
 
 			assert(coroutine.status(thread) == "dead", "")
 		end)
+
+		x.test("BindToClose should finish if a document fails to load", function(context)
+			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+			context.write("collection", "document", "INVALID DATA")
+			collection:load("document"):catch(function() end)
+
+			-- Wait to close game so that the save request doesn't get cancelled.
+			task.wait(0.1)
+
+			Promise.try(function()
+				context.lapis.autoSave:onGameClose()
+			end)
+				:timeout(1)
+				:expect()
+		end)
 	end)
 end
