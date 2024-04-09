@@ -120,6 +120,7 @@ function Collection:load(key, defaultUserIds)
 			:finally(function(status)
 				if status ~= Promise.Status.Resolved then
 					self.openDocuments[key] = nil
+					self.autoSave.ongoingLoads -= 1
 				end
 			end)
 	end
