@@ -1,6 +1,6 @@
 [package]
 name = "nezuo/lapis"
-version = "0.2.11"
+version = "0.3.0"
 registry = "https://github.com/UpliftGames/wally-index"
 exclude = ["**"]
 include = ["src", "src/*", "default.project.json", "wally.toml", "LICENSE"]
