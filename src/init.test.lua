@@ -172,17 +172,19 @@ return function(x)
 		promise:expect()
 	end)
 
-	x.test("load returns same promise/document", function(context)
-		local collection = context.lapis.createCollection("def", DEFAULT_OPTIONS)
+	x.test("second load should fail because of session lock", function(context)
+		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 
-		local promise1 = collection:load("def")
-		local promise2 = collection:load("def")
+		context.lapis.setConfig({ loadAttempts = 1 })
 
-		assert(promise1 == promise2, "load returns different promises")
+		local first = collection:load("document")
+		local second = collection:load("document")
 
-		Promise.all({ promise1, promise2 }):expect()
+		first:expect()
 
-		assert(promise1:expect() == promise2:expect(), "promise resolved with different values")
+		shouldThrow(function()
+			second:expect()
+		end, "Could not acquire lock")
 	end)
 
 	x.test("load returns a new promise when first load fails", function(context)

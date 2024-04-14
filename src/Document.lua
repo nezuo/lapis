@@ -149,8 +149,6 @@ function Document:close()
 			:finally(function()
 				self.closed = true
 
-				self.collection.openDocuments[self.key] = nil
-
 				self.collection.autoSave:removeDocument(self)
 			end)
 			:andThen(function()
