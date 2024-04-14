@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* **BREAKING CHANGE**: `Collection:load` no longer caches promises. Each call will now return a unique promise and attempt to load the document separately. This is to fix an edge case that can result in data loss. More information can be found in the pull request. ([#48])
+
+[#48]: https://github.com/nezuo/lapis/pull/48
 
 ## 0.2.11 - April 9, 2024
 * Fix infinite yield in `game:BindToClose` caused by a document failing to load. ([#45])
