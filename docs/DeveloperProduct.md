@@ -5,14 +5,6 @@ sidebar_position: 4
 # Handling Developer Products
 The following code is an example of how you would handle player's purchasing developer products:
 ```lua
-local MarketplaceService = game:GetService("MarketplaceService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Lapis = require(ReplicatedStorage.Packages.Lapis)
-local Sift = require(ReplicatedStorage.Packages.Sift)
-local t = require(ReplicatedStorage.Packages.t)
-
 local DEFAULT_DATA = { coins = 100, recentPurchases = {} }
 local RECENT_PURCHASES_LIMIT = 100
 local PRODUCTS = {
