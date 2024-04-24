@@ -15,7 +15,7 @@ local collection = Lapis.createCollection("PlayerData", {
 
 local documents = {}
 
-local function onPlayerAdded(player)
+local function onPlayerAdded(player: Player)
 	-- The second argument associates the document with the player's UserId which is useful
 	-- for GDPR compliance.
 	collection
@@ -25,9 +25,10 @@ local function onPlayerAdded(player)
 				-- The player might have left before the document finished loading.
 				-- The document needs to be closed because PlayerRemoving won't fire at this point.
 				document:close():catch(warn)
-			else
-				documents[player] = document
+				return
 			end
+
+			documents[player] = document
 		end)
 		:catch(function(message)
 			warn(`Player {player.Name}'s data failed to load: {message}`)
@@ -37,7 +38,7 @@ local function onPlayerAdded(player)
 		end)
 end
 
-local function onPlayerRemoving(player)
+local function onPlayerRemoving(player: Player)
 	local document = documents[player]
 
 	-- The document won't be added to the dictionary if PlayerRemoving fires bofore it finishes loading.

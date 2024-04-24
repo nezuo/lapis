@@ -111,5 +111,4 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 for _, player in Players:GetPlayers() do
 	onPlayerAdded(player)
 end
-
 ```
