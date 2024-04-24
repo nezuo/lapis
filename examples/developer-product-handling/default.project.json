@@ -1,5 +1,5 @@
 {
-  "name": "example",
+  "name": "developer-product-handling",
   "tree": {
     "$className": "DataModel",
     "Players": {
