@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[872],{63891:s=>{s.exports=JSON.parse('{"sourceUrl":"https://www.github.com/nezuo/lapis/blob/master","baseUrl":"/lapis/","classOrder":[],"apiCategories":[]}')}}]);
