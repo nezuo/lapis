@@ -9,7 +9,8 @@
 /Packages
 /DevPackages
 
-/example/Packages
+/examples/**/Packages
+/examples/**/ServerPackages
 
 /sourcemap.json
 

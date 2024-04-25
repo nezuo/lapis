@@ -9,11 +9,10 @@
     },
     "ReplicatedStorage": {
       "Packages": {
-        "$path": "Packages",
-
         "Lapis": {
-          "$path": "../"
-        }
+          "$path": "../../"
+        },
+        "$path": "Packages"
       }
     },
     "ServerScriptService": {

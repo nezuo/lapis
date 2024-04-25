@@ -1,10 +1,9 @@
----
-sidebar_position: 2
----
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-# Example Usage
-The following code is an example of how you would load and close player data:
-```lua
+local Lapis = require(ReplicatedStorage.Packages.Lapis)
+local t = require(ReplicatedStorage.Packages.t)
+
 local DEFAULT_DATA = { coins = 100 }
 
 local collection = Lapis.createCollection("PlayerData", {
@@ -54,7 +53,3 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 for _, player in Players:GetPlayers() do
 	onPlayerAdded(player)
 end
-```
-:::info
-You do not need to handle `game:BindToClose` or auto saving. Lapis automatically does both of those.
-:::
