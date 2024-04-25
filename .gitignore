@@ -10,6 +10,7 @@
 /DevPackages
 
 /examples/**/Packages
+/examples/**/ServerPackages
 
 /sourcemap.json
 
