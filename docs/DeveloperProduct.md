@@ -3,7 +3,7 @@ sidebar_position: 4
 ---
 
 # Handling Developer Products
-The following code is an example of how you would handle player's purchasing developer products:
+The following code is an example of how you would handle players purchasing developer products:
 ```lua
 local DEFAULT_DATA = { coins = 100, recentPurchases = {} }
 local RECENT_PURCHASES_LIMIT = 100
