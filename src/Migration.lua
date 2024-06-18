@@ -1,19 +1,22 @@
-local freezeDeep = require(script.Parent.freezeDeep)
-
 local Migration = {}
 
 function Migration.migrate(migrations, oldVersion, data)
 	if oldVersion < #migrations then
 		for version = oldVersion + 1, #migrations do
-			local migrated = migrations[version](data)
+			local ok, migrated = pcall(migrations[version], data)
+			if not ok then
+				return false, `Migration {version} threw an error: {migrated}`
+			end
 
-			freezeDeep(migrated)
+			if migrated == nil then
+				return false, `Migration {version} returned 'nil'`
+			end
 
 			data = migrated
 		end
 	end
 
-	return data
+	return true, data
 end
 
 return Migration

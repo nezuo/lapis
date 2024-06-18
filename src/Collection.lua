@@ -74,7 +74,10 @@ function Collection:load(key, defaultUserIds)
 				return "retry", "Could not acquire lock"
 			end
 
-			local migrated = Migration.migrate(self.options.migrations, value.migrationVersion, value.data)
+			local migrationOk, migrated = Migration.migrate(self.options.migrations, value.migrationVersion, value.data)
+			if not migrationOk then
+				return "fail", migrated
+			end
 
 			local ok, message = self.options.validate(migrated)
 			if not ok then
