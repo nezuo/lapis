@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Added `Document:keyInfo()`. It returns the last updated `DataStoreKeyInfo` returned from loading, saving, or closing the document. ([#50])
+
+[#50]: https://github.com/nezuo/lapis/pull/50
 
 ### 0.3.0 - April 14, 2024
 * **BREAKING CHANGE**: `Collection:load` no longer caches promises. Each call will now return a unique promise and attempt to load the document separately. This is to fix an edge case that can result in data loss. More information can be found in the pull request. ([#48])

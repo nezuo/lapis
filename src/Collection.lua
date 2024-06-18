@@ -101,7 +101,7 @@ function Collection:load(key, defaultUserIds)
 
 			freezeDeep(data)
 
-			local document = Document.new(self, key, self.options.validate, lockId, data, keyInfo:GetUserIds())
+			local document = Document.new(self, key, self.options.validate, lockId, data, keyInfo)
 
 			self.autoSave:finishLoad(document)
 

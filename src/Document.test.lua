@@ -220,6 +220,24 @@ return function(x)
 		promise:expect()
 	end)
 
+	x.test(":save doesn't resolve with any value", function(context)
+		local document = context.lapis.createCollection("12345", DEFAULT_OPTIONS):load("doc"):expect()
+
+		local a, b = document:save():expect()
+
+		assert(a == nil, "")
+		assert(b == nil, "")
+	end)
+
+	x.test(":close doesn't resolve with any value", function(context)
+		local document = context.lapis.createCollection("12345", DEFAULT_OPTIONS):load("doc"):expect()
+
+		local a, b = document:close():expect()
+
+		assert(a == nil, "")
+		assert(b == nil, "")
+	end)
+
 	x.nested("Document:beforeSave", function()
 		x.test("throws when setting twice", function(context)
 			local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
@@ -372,6 +390,55 @@ return function(x)
 			document:close():expect()
 
 			assertEqual(order, "sc")
+		end)
+
+		x.nested("keyInfo", function()
+			x.test("gets load key info", function(context)
+				local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+				local before = context.getKeyInfo("collection", "document")
+				local document = collection:load("document"):expect()
+				local keyInfo = document:keyInfo()
+
+				assert(before ~= keyInfo, "")
+				assert(typeof(keyInfo) == "table", "")
+				assert(keyInfo.Version == "0", "")
+			end)
+
+			x.test("updating user ids shouldn't affect key info", function(context)
+				local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+
+				local document = collection:load("document"):expect()
+				local keyInfo = document:keyInfo()
+
+				document:addUserId(123)
+
+				assertEqual(#keyInfo:GetUserIds(), 0)
+			end)
+
+			x.test("key info is updated after :save", function(context)
+				local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+				local keyInfo = document:keyInfo()
+
+				document:save():expect()
+
+				local newKeyInfo = document:keyInfo()
+
+				assert(keyInfo ~= newKeyInfo, "")
+				assert(newKeyInfo.Version == "1", "")
+			end)
+
+			x.test("key info is updated after :close", function(context)
+				local document = context.lapis.createCollection("collection", DEFAULT_OPTIONS):load("document"):expect()
+				local keyInfo = document:keyInfo()
+
+				document:close():expect()
+
+				local newKeyInfo = document:keyInfo()
+
+				assert(keyInfo ~= newKeyInfo, "")
+				assert(newKeyInfo.Version == "1", "")
+			end)
 		end)
 	end)
 end
