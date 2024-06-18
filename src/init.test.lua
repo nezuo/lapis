@@ -65,6 +65,10 @@ return function(x)
 				end
 			end
 		end
+
+		context.getKeyInfo = function(name, key)
+			return dataStoreService.dataStores[name]["global"].keyInfos[key]
+		end
 	end)
 
 	x.test("throws when setting invalid config key", function(context)
