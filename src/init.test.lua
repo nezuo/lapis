@@ -228,6 +228,73 @@ return function(x)
 		collection:load("migration"):expect()
 	end)
 
+	x.test("error is thrown if a migration returns nil", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			validate = function()
+				return true
+			end,
+			defaultData = {},
+			migrations = {
+				function() end,
+			},
+		})
+
+		context.write("collection", "document", {})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "Migration 1 returned 'nil'")
+	end)
+
+	x.test("migrations should allow mutable updates", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			validate = function(value)
+				return typeof(value.coins) == "number"
+			end,
+			defaultData = { coins = 0 },
+			migrations = {
+				function(old)
+					old.coins = 0
+
+					return old
+				end,
+				function(old)
+					old.coins = 100
+
+					return old
+				end,
+			},
+		})
+
+		context.write("collection", "document", {})
+
+		local document = collection:load("document"):expect()
+
+		assertEqual(document:read().coins, 100)
+	end)
+
+	x.test("data should be frozen after a migration", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			validate = function(value)
+				return typeof(value.coins) == "number"
+			end,
+			defaultData = { coins = 0 },
+			migrations = {
+				function(old)
+					old.coins = 0
+					return old
+				end,
+			},
+		})
+
+		context.write("collection", "document", {})
+
+		local document = collection:load("document"):expect()
+
+		shouldThrow(function()
+			document:read().coins = 100
+		end, "readonly")
+	end)
 	x.test("throws when migration version is ahead of latest version", function(context)
 		local collection = context.lapis.createCollection("collection", {
 			validate = function()

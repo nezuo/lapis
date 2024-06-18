@@ -16,8 +16,10 @@ local MIGRATIONS = {
     end,
     -- Migrate from version 2 to 3.
     function(old)
-        -- We no longer need the playTime key, so we remove it.
-        return Dictionary.removeKey(old, "playTime")
+        -- We no longer need the playTime key, so we remove it. Note: Migrations can update the data mutably but you still need to return the value.
+        old.playTime = nil
+
+        return old
     end,
 }
 
