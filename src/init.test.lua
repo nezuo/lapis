@@ -102,7 +102,7 @@ return function(x)
 		end)
 	end)
 
-	x.test("validates default data", function(context)
+	x.test("validates default data as a table", function(context)
 		shouldThrow(function()
 			context.lapis.createCollection("bar", {
 				validate = function()
@@ -112,7 +112,53 @@ return function(x)
 		end, "data is invalid")
 	end)
 
-	x.test("handle validate erroring", function(context)
+	x.test("handles default data erroring", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				error("foo")
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "'defaultData' threw an error", "foo")
+	end)
+
+	x.test("validates default data as a function", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				return {}
+			end,
+			validate = function()
+				return false, "foo"
+			end,
+		})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "Invalid data:", "foo")
+	end)
+
+	x.test("should pass key to default data", function(context)
+		local key
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function(passed)
+				key = passed
+				return {}
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		collection:load("document"):expect()
+		assertEqual(key, "document")
+	end)
+
+	x.test("handles validate erroring", function(context)
 		local created = false
 
 		local collection = context.lapis.createCollection("collection", {

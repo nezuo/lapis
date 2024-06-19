@@ -18,7 +18,7 @@ export type PartialLapisConfig = {
 }
 
 export type CollectionOptions<T> = {
-	defaultData: T,
+	defaultData: T | (key: string) -> T,
 	migrations: { (any) -> any }?,
 	validate: (T) -> (boolean, string?),
 	[any]: nil,
