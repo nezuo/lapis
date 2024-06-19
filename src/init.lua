@@ -21,9 +21,9 @@ export type PartialLapisConfig = {
 }
 
 export type CollectionOptions<T> = {
-	defaultData: T,
+	defaultData: T | (key: string) -> T,
 	migrations: { Migration }?,
-	validate: (T) -> (boolean, string?),
+	validate: (any) -> (boolean, string?),
 	[any]: nil,
 }
 
@@ -88,10 +88,10 @@ function Lapis.setConfig(partialConfig: PartialLapisConfig)
 end
 
 --[=[
-	@interface CollectionOptions
+	@interface CollectionOptions<T>
 	@within Lapis
 	.validate (any) -> true | (false, string) -- Takes a document's data and returns true on success or false and an error on fail.
-	.defaultData any
+	.defaultData T | (key: string) -> T -- If set to a function, it's called when a new document is created and is passed the key of the document.
 	.migrations { Migration }? -- Migrations take old data and return new data. Order is first to last.
 ]=]
 

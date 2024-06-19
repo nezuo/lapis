@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local DataStoreServiceMock = require(ReplicatedStorage.DevPackages.DataStoreServiceMock)
 local Internal = require(script.Parent.Internal)
@@ -102,7 +103,7 @@ return function(x)
 		end)
 	end)
 
-	x.test("validates default data", function(context)
+	x.test("validates default data as a table", function(context)
 		shouldThrow(function()
 			context.lapis.createCollection("bar", {
 				validate = function()
@@ -112,7 +113,50 @@ return function(x)
 		end, "data is invalid")
 	end)
 
-	x.test("handle validate erroring", function(context)
+	x.test("handles default data erroring", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				error("foo")
+			end,
+		})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "'defaultData' threw an error", "foo")
+	end)
+
+	x.test("validates default data as a function", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				return {}
+			end,
+			validate = function()
+				return false, "foo"
+			end,
+		})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "Invalid data:", "foo")
+	end)
+
+	x.test("should pass key to default data", function(context)
+		local key
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function(passed)
+				key = passed
+				return {}
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		collection:load("document"):expect()
+		assertEqual(key, "document")
+	end)
+
+	x.test("handles validate erroring", function(context)
 		local created = false
 
 		local collection = context.lapis.createCollection("collection", {
@@ -459,17 +503,19 @@ return function(x)
 
 			collection:load("document")
 
+			local waited = false
+			local finished = false
 			local thread = task.spawn(function()
-				task.wait(0.1) -- Wait for load request to call UpdateAsync.
+				RunService.PostSimulation:Wait()
+				RunService.PostSimulation:Wait()
+				waited = true
 				context.lapis.autoSave:onGameClose()
+				finished = true
 			end)
 
-			assert(
-				coroutine.status(thread) == "suspended",
-				"onGameClose didn't wait for the documents to finish loading"
-			)
-
-			task.wait(0.2)
+			while not waited do
+				task.wait()
+			end
 
 			context.dataStoreService.yield:stopYield()
 
@@ -480,7 +526,10 @@ return function(x)
 			)
 			context.dataStoreService.yield:stopYield()
 
-			task.wait(0.1) -- Wait for document to finish closing.
+			while not finished do
+				task.wait()
+			end
+
 			context.expectUnlocked("collection", "document")
 
 			assert(coroutine.status(thread) == "dead", "")

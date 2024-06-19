@@ -16,7 +16,9 @@ local Collection = {}
 Collection.__index = Collection
 
 function Collection.new(name, options, data, autoSave, config)
-	assert(options.validate(options.defaultData))
+	if typeof(options.defaultData) ~= "function" then
+		assert(options.validate(options.defaultData))
+	end
 
 	freezeDeep(options.defaultData)
 
@@ -54,10 +56,30 @@ function Collection:load(key, defaultUserIds)
 		.data
 		:load(self.dataStore, key, function(value, keyInfo)
 			if value == nil then
+				local defaultData
+				if typeof(self.options.defaultData) == "function" then
+					local defaultOk, tailoredDefaultData = pcall(self.options.defaultData, key)
+					if not defaultOk then
+						return "fail", `'defaultData' threw an error: {tailoredDefaultData}`
+					end
+
+					local validateOk, valid, message = pcall(self.options.validate, tailoredDefaultData)
+					if not validateOk then
+						return "fail", `'validate' threw an error: {valid}`
+					elseif not valid then
+						return "fail", `Invalid data: {message}`
+					end
+
+					defaultData = tailoredDefaultData
+				else
+					-- The data was validated when the collection was created.
+					defaultData = self.options.defaultData
+				end
+
 				local data = {
 					migrationVersion = #self.options.migrations,
 					lockId = lockId,
-					data = self.options.defaultData,
+					data = defaultData,
 				}
 
 				return "succeed", data, defaultUserIds
