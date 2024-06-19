@@ -117,9 +117,6 @@ return function(x)
 			defaultData = function()
 				error("foo")
 			end,
-			validate = function()
-				return true
-			end,
 		})
 
 		shouldThrow(function()
