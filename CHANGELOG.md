@@ -5,11 +5,14 @@
 * Migrations can now update the data mutably. Note: The value still needs to be returned from the migration function. ([#51])
 * Gracefully handle `validate` throwing an error in `Collection:load`. Before it would keep retrying the load and spam the console with confusing errors. ([#52])
 * Allow `defaultData` to be a function. The return value will be validated when a new document is created. ([#53])
+* Migrations can now be marked as `backwardsCompatible`. This allows documents to be loaded on servers with an older version as long as they are compatible.
+For more information, see the [docs](https://nezuo.github.io/lapis/docs/Migrations#backwards-compatibility). ([#54])
 
 [#50]: https://github.com/nezuo/lapis/pull/50
 [#51]: https://github.com/nezuo/lapis/pull/51
 [#52]: https://github.com/nezuo/lapis/pull/52
 [#53]: https://github.com/nezuo/lapis/pull/53
+[#54]: https://github.com/nezuo/lapis/pull/54
 
 ### 0.3.0 - April 14, 2024
 * **BREAKING CHANGE**: `Collection:load` no longer caches promises. Each call will now return a unique promise and attempt to load the document separately. This is to fix an edge case that can result in data loss. More information can be found in the pull request. ([#48])
