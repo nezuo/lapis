@@ -14,10 +14,10 @@ dependencies = []
 
 [[package]]
 name = "nezuo/lapis"
-version = "0.2.9"
-dependencies = [["Promise", "evaera/promise@4.0.0"], ["DataStoreServiceMock", "nezuo/data-store-service-mock@0.3.5"], ["Midori", "nezuo/midori@0.1.3"]]
+version = "0.3.0"
+dependencies = [["Promise", "evaera/promise@4.0.0"], ["DataStoreServiceMock", "nezuo/data-store-service-mock@0.3.5"], ["Midori", "nezuo/midori@0.1.4"]]
 
 [[package]]
 name = "nezuo/midori"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = []
