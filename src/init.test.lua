@@ -276,110 +276,258 @@ return function(x)
 		promise2:expect()
 	end)
 
-	x.test("migrates the data", function(context)
-		local collection = context.lapis.createCollection("migration", {
-			validate = function(value)
-				return value == "newData", "value does not equal newData"
-			end,
-			defaultData = "newData",
-			migrations = {
-				function()
-					return "newData"
+	x.nested("migrations", function()
+		x.test("migrates the data", function(context)
+			local collection = context.lapis.createCollection("migration", {
+				validate = function(value)
+					return value == "newData", "value does not equal newData"
 				end,
-			},
-		})
+				defaultData = "newData",
+				migrations = {
+					function()
+						return "newData"
+					end,
+				},
+			})
 
-		context.write("migration", "migration", "data")
+			context.write("migration", "migration", "data")
 
-		collection:load("migration"):expect()
-	end)
+			collection:load("migration"):expect()
+		end)
 
-	x.test("error is thrown if a migration returns nil", function(context)
-		local collection = context.lapis.createCollection("collection", {
-			validate = function()
-				return true
-			end,
-			defaultData = {},
-			migrations = {
-				function() end,
-			},
-		})
+		x.test("error is thrown if a migration returns nil", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				validate = function()
+					return true
+				end,
+				defaultData = {},
+				migrations = {
+					function() end,
+				},
+			})
 
-		context.write("collection", "document", {})
+			context.write("collection", "document", {})
 
-		shouldThrow(function()
+			shouldThrow(function()
+				collection:load("document"):expect()
+			end, "Migration 1 returned 'nil'")
+		end)
+
+		x.test("migrations should allow mutable updates", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				validate = function(value)
+					return typeof(value.coins) == "number"
+				end,
+				defaultData = { coins = 0 },
+				migrations = {
+					function(old)
+						old.coins = 0
+
+						return old
+					end,
+					function(old)
+						old.coins = 100
+
+						return old
+					end,
+				},
+			})
+
+			context.write("collection", "document", {})
+
+			local document = collection:load("document"):expect()
+
+			assertEqual(document:read().coins, 100)
+		end)
+
+		x.test("data should be frozen after a migration", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				validate = function(value)
+					return typeof(value.coins) == "number"
+				end,
+				defaultData = { coins = 0 },
+				migrations = {
+					function(old)
+						old.coins = 0
+						return old
+					end,
+				},
+			})
+
+			context.write("collection", "document", {})
+
+			local document = collection:load("document"):expect()
+
+			shouldThrow(function()
+				document:read().coins = 100
+			end, "readonly")
+		end)
+
+		x.test("migrations should work with tables and functions", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				validate = function()
+					return true
+				end,
+				defaultData = "a",
+				migrations = {
+					{
+						backwardsCompatible = false,
+						migrate = function(old)
+							return old
+						end,
+					},
+					function(old)
+						return old
+					end,
+				},
+			})
+
+			local dataStore = context.dataStoreService.dataStores.collection.global
+			dataStore:write("document", {
+				migrationVersion = 0,
+				data = "a",
+			})
+
 			collection:load("document"):expect()
-		end, "Migration 1 returned 'nil'")
-	end)
+		end)
 
-	x.test("migrations should allow mutable updates", function(context)
-		local collection = context.lapis.createCollection("collection", {
-			validate = function(value)
-				return typeof(value.coins) == "number"
-			end,
-			defaultData = { coins = 0 },
-			migrations = {
-				function(old)
-					old.coins = 0
+		x.nested("saved version ahead", function()
+			x.test(
+				"throws when migration version is ahead of latest version and is not backwards compatible",
+				function(context)
+					local collection = context.lapis.createCollection("collection", {
+						validate = function()
+							return true
+						end,
+						defaultData = "a",
+						migrations = {
+							function(old)
+								return old
+							end,
+						},
+					})
 
+					local dataStore = context.dataStoreService.dataStores.collection.global
+					dataStore:write("document", {
+						migrationVersion = 2,
+						data = "b",
+					})
+
+					local promise = collection:load("document")
+
+					shouldThrow(function()
+						promise:expect()
+					end, "Saved migration version 2 is not backwards compatible with version 1")
+				end
+			)
+
+			x.test("default data gets lastCompatibleVersion", function(context)
+				local migrate = function(old)
 					return old
-				end,
-				function(old)
-					old.coins = 100
+				end
 
+				local collection = context.lapis.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+					migrations = {
+						{ migrate = migrate, backwardsCompatible = true },
+					},
+				})
+
+				collection:load("document"):expect():close():expect()
+
+				local otherLapis = Internal.new(false)
+				otherLapis.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
+
+				local otherCollection = otherLapis.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+				})
+
+				-- This would error if lastCompatibleVersion = 0 wasn't saved.
+				otherCollection:load("document"):expect()
+			end)
+
+			x.test("handles lastCompatibleVersion == nil", function(context)
+				local collection = context.lapis.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+				})
+
+				local dataStore = context.dataStoreService.dataStores.collection.global
+				dataStore:write("document", {
+					migrationVersion = 1,
+					data = "b",
+				})
+
+				shouldThrow(function()
+					collection:load("document"):expect()
+				end, "Saved migration version 1 is not backwards compatible with version 0")
+			end)
+
+			x.test("migration saves lastCompatibleVersion", function(context)
+				local function migrate(old)
 					return old
-				end,
-			},
-		})
+				end
 
-		context.write("collection", "document", {})
+				local collection = context.lapis.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+					migrations = {
+						{ migrate = migrate, backwardsCompatible = false },
+						{ migrate = migrate, backwardsCompatible = true },
+						{ migrate = migrate, backwardsCompatible = true },
+					},
+				})
 
-		local document = collection:load("document"):expect()
+				local dataStore = context.dataStoreService.dataStores.collection.global
+				dataStore:write("document", {
+					migrationVersion = 0,
+					data = "b",
+				})
 
-		assertEqual(document:read().coins, 100)
-	end)
+				collection:load("document"):expect():close():expect()
 
-	x.test("data should be frozen after a migration", function(context)
-		local collection = context.lapis.createCollection("collection", {
-			validate = function(value)
-				return typeof(value.coins) == "number"
-			end,
-			defaultData = { coins = 0 },
-			migrations = {
-				function(old)
-					old.coins = 0
-					return old
-				end,
-			},
-		})
+				local lapisWithV0 = Internal.new(false)
+				lapisWithV0.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
-		context.write("collection", "document", {})
+				local collectionWithV0 = lapisWithV0.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+				})
 
-		local document = collection:load("document"):expect()
+				shouldThrow(function()
+					collectionWithV0:load("document"):expect()
+				end, "Saved migration version 3 is not backwards compatible with version 0")
 
-		shouldThrow(function()
-			document:read().coins = 100
-		end, "readonly")
-	end)
-	x.test("throws when migration version is ahead of latest version", function(context)
-		local collection = context.lapis.createCollection("collection", {
-			validate = function()
-				return true
-			end,
-			defaultData = "a",
-		})
+				local lapisWithV1 = Internal.new(false)
+				lapisWithV1.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
-		local dataStore = context.dataStoreService.dataStores.collection.global
-		dataStore:write("document", {
-			migrationVersion = 1,
-			data = "b",
-		})
+				local collectionWithV1 = lapisWithV1.createCollection("collection", {
+					validate = function()
+						return true
+					end,
+					defaultData = "a",
+					migrations = {
+						{ migrate = migrate, backwardsCompatible = false },
+						{ migrate = migrate, backwardsCompatible = true },
+					},
+				})
 
-		local promise = collection:load("document")
-
-		shouldThrow(function()
-			promise:expect()
-		end, "Saved migration version ahead of latest version")
+				-- This shouldn't error because v3 is backwards compatible with v1.
+				collectionWithV1:load("document"):expect()
+			end)
+		end)
 	end)
 
 	x.test("closing and immediately opening should return a new document", function(context)

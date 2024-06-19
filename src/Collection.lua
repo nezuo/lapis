@@ -22,7 +22,17 @@ function Collection.new(name, options, data, autoSave, config)
 
 	freezeDeep(options.defaultData)
 
-	options.migrations = options.migrations or {}
+	local migrations = {}
+	if options.migrations ~= nil then
+		for _, migration in options.migrations do
+			if typeof(migration) == "function" then
+				table.insert(migrations, { migrate = migration })
+			else
+				table.insert(migrations, migration)
+			end
+		end
+	end
+	options.migrations = migrations
 
 	return setmetatable({
 		dataStore = config:get("dataStoreService"):GetDataStore(name),
@@ -78,15 +88,12 @@ function Collection:load(key, defaultUserIds)
 
 				local data = {
 					migrationVersion = #self.options.migrations,
+					lastCompatibleVersion = Migration.getLastCompatibleVersion(self.options.migrations),
 					lockId = lockId,
 					data = defaultData,
 				}
 
 				return "succeed", data, defaultUserIds
-			end
-
-			if value.migrationVersion > #self.options.migrations then
-				return "fail", "Saved migration version ahead of latest version"
 			end
 
 			if
@@ -96,7 +103,7 @@ function Collection:load(key, defaultUserIds)
 				return "retry", "Could not acquire lock"
 			end
 
-			local migrationOk, migrated = Migration.migrate(self.options.migrations, value.migrationVersion, value.data)
+			local migrationOk, migrated, lastCompatibleVersion = Migration.migrate(self.options.migrations, value)
 			if not migrationOk then
 				return "fail", migrated
 			end
@@ -110,6 +117,7 @@ function Collection:load(key, defaultUserIds)
 
 			local data = {
 				migrationVersion = #self.options.migrations,
+				lastCompatibleVersion = lastCompatibleVersion,
 				lockId = lockId,
 				data = migrated,
 			}
