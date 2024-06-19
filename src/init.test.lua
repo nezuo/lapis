@@ -112,6 +112,28 @@ return function(x)
 		end, "data is invalid")
 	end)
 
+	x.test("handle validate erroring", function(context)
+		local created = false
+
+		local collection = context.lapis.createCollection("collection", {
+			validate = function()
+				if created then
+					error("foo")
+				else
+					return true
+				end
+			end,
+		})
+
+		created = true
+
+		context.write("collection", "document", {})
+
+		shouldThrow(function()
+			collection:load("document"):expect()
+		end, "'validate' threw an error", "foo")
+	end)
+
 	x.test("should not override data if validation fails", function(context)
 		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
 

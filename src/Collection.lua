@@ -79,8 +79,10 @@ function Collection:load(key, defaultUserIds)
 				return "fail", migrated
 			end
 
-			local ok, message = self.options.validate(migrated)
-			if not ok then
+			local validateOk, valid, message = pcall(self.options.validate, migrated)
+			if not validateOk then
+				return "fail", `'validate' threw an error: {valid}`
+			elseif not valid then
 				return "fail", `Invalid data: {message}`
 			end
 
