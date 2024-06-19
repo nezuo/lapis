@@ -140,6 +140,21 @@ return function(x)
 		end, "Invalid data:", "foo")
 	end)
 
+	x.test("default data function should set default data", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				return "default"
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		local document = collection:load("document"):expect()
+
+		assertEqual(document:read(), "default")
+	end)
+
 	x.test("should pass key to default data", function(context)
 		local key
 		local collection = context.lapis.createCollection("collection", {
@@ -154,6 +169,40 @@ return function(x)
 
 		collection:load("document"):expect()
 		assertEqual(key, "document")
+	end)
+
+	x.test("default data function should deep copy data", function(context)
+		local returned = { {} }
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				return returned
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		local document = collection:load("document"):expect()
+
+		assert(document:read() ~= returned, "")
+		assert(document:read()[1] ~= returned[1], "")
+	end)
+
+	x.test("default data function should freeze data", function(context)
+		local collection = context.lapis.createCollection("collection", {
+			defaultData = function()
+				return {}
+			end,
+			validate = function()
+				return true
+			end,
+		})
+
+		local document = collection:load("document"):expect()
+
+		shouldThrow(function()
+			document:read().foo = true
+		end, "readonly")
 	end)
 
 	x.test("handles validate erroring", function(context)
