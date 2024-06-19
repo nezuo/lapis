@@ -72,7 +72,7 @@ function Collection:load(key, defaultUserIds)
 
 					defaultData = tailoredDefaultData
 				else
-					-- The data was validated when the collection was created
+					-- The data was validated when the collection was created.
 					defaultData = self.options.defaultData
 				end
 
