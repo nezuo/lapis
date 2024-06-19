@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local DataStoreServiceMock = require(ReplicatedStorage.DevPackages.DataStoreServiceMock)
 local Internal = require(script.Parent.Internal)
@@ -502,17 +503,19 @@ return function(x)
 
 			collection:load("document")
 
+			local waited = false
+			local finished = false
 			local thread = task.spawn(function()
-				task.wait(0.1) -- Wait for load request to call UpdateAsync.
+				RunService.PostSimulation:Wait()
+				RunService.PostSimulation:Wait()
+				waited = true
 				context.lapis.autoSave:onGameClose()
+				finished = true
 			end)
 
-			assert(
-				coroutine.status(thread) == "suspended",
-				"onGameClose didn't wait for the documents to finish loading"
-			)
-
-			task.wait(0.2)
+			while not waited do
+				task.wait()
+			end
 
 			context.dataStoreService.yield:stopYield()
 
@@ -523,7 +526,10 @@ return function(x)
 			)
 			context.dataStoreService.yield:stopYield()
 
-			task.wait(0.1) -- Wait for document to finish closing.
+			while not finished do
+				task.wait()
+			end
+
 			context.expectUnlocked("collection", "document")
 
 			assert(coroutine.status(thread) == "dead", "")
