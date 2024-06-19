@@ -3,6 +3,9 @@ local PromiseTypes = require(script.PromiseTypes)
 
 local internal = Internal.new(true)
 
+type Migrate = (any) -> any
+type Migration = Migrate | { backwardsCompatible: boolean?, migrate: Migrate }
+
 export type DataStoreService = {
 	GetDataStore: (name: string) -> GlobalDataStore,
 	GetRequestBudgetForRequestType: (requestType: Enum.DataStoreRequestType) -> number,
@@ -19,7 +22,7 @@ export type PartialLapisConfig = {
 
 export type CollectionOptions<T> = {
 	defaultData: T,
-	migrations: { (any) -> any }?,
+	migrations: { Migration }?,
 	validate: (T) -> (boolean, string?),
 	[any]: nil,
 }
@@ -55,6 +58,11 @@ local Lapis = {}
 ]=]
 
 --[=[
+	@type Migration (any) -> any | { backwardsCompatible: boolean?, migrate: (any) -> any }
+	@within Lapis
+]=]
+
+--[=[
 	```lua
 	Lapis.setConfig({
 		saveAttempts = 10,
@@ -84,7 +92,7 @@ end
 	@within Lapis
 	.validate (any) -> true | (false, string) -- Takes a document's data and returns true on success or false and an error on fail.
 	.defaultData any
-	.migrations { (any) -> any }? -- Migrations take old data and return new data. Order is first to last.
+	.migrations { Migration }? -- Migrations take old data and return new data. Order is first to last.
 ]=]
 
 --[=[
