@@ -4,6 +4,7 @@ local Document = require(script.Parent.Document)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
+local copyDeep = require(script.Parent.copyDeep)
 
 local LOCK_EXPIRE = 30 * 60
 
@@ -80,7 +81,7 @@ function Collection:load(key, defaultUserIds)
 						return "fail", `Invalid data: {message}`
 					end
 
-					defaultData = tailoredDefaultData
+					defaultData = copyDeep(tailoredDefaultData)
 				else
 					-- The data was validated when the collection was created.
 					defaultData = self.options.defaultData
