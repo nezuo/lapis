@@ -153,9 +153,6 @@ return function(x)
 
 	x.test("freezes document data", function(context)
 		local collection = context.lapis.createCollection("collection", {
-			validate = function()
-				return true
-			end,
 			defaultData = {},
 		})
 

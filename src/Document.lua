@@ -60,7 +60,10 @@ end
 ]=]
 function Document:write(data)
 	assert(not self.closed, "Cannot write to a closed document")
-	assert(self.validate(data))
+
+	if self.validate ~= nil then
+		assert(self.validate(data))
+	end
 
 	freezeDeep(data)
 
