@@ -92,9 +92,6 @@ return function(x)
 		local defaultData = { a = { b = { c = 5 } } }
 
 		context.lapis.createCollection("baz", {
-			validate = function()
-				return true
-			end,
 			defaultData = defaultData,
 		})
 
@@ -145,9 +142,6 @@ return function(x)
 			defaultData = function()
 				return "default"
 			end,
-			validate = function()
-				return true
-			end,
 		})
 
 		local document = collection:load("document"):expect()
@@ -162,9 +156,6 @@ return function(x)
 				key = passed
 				return {}
 			end,
-			validate = function()
-				return true
-			end,
 		})
 
 		collection:load("document"):expect()
@@ -176,9 +167,6 @@ return function(x)
 		local collection = context.lapis.createCollection("collection", {
 			defaultData = function()
 				return returned
-			end,
-			validate = function()
-				return true
 			end,
 		})
 
@@ -192,9 +180,6 @@ return function(x)
 		local collection = context.lapis.createCollection("collection", {
 			defaultData = function()
 				return {}
-			end,
-			validate = function()
-				return true
 			end,
 		})
 
@@ -346,9 +331,6 @@ return function(x)
 
 		x.test("error is thrown if a migration returns nil", function(context)
 			local collection = context.lapis.createCollection("collection", {
-				validate = function()
-					return true
-				end,
 				defaultData = {},
 				migrations = {
 					function() end,
@@ -414,9 +396,6 @@ return function(x)
 
 		x.test("migrations should work with tables and functions", function(context)
 			local collection = context.lapis.createCollection("collection", {
-				validate = function()
-					return true
-				end,
 				defaultData = "a",
 				migrations = {
 					{
@@ -445,9 +424,6 @@ return function(x)
 				"throws when migration version is ahead of latest version and is not backwards compatible",
 				function(context)
 					local collection = context.lapis.createCollection("collection", {
-						validate = function()
-							return true
-						end,
 						defaultData = "a",
 						migrations = {
 							function(old)
@@ -476,9 +452,6 @@ return function(x)
 				end
 
 				local collection = context.lapis.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 					migrations = {
 						{ migrate = migrate, backwardsCompatible = true },
@@ -491,9 +464,6 @@ return function(x)
 				otherLapis.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
 				local otherCollection = otherLapis.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 				})
 
@@ -503,9 +473,6 @@ return function(x)
 
 			x.test("handles lastCompatibleVersion == nil", function(context)
 				local collection = context.lapis.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 				})
 
@@ -526,9 +493,6 @@ return function(x)
 				end
 
 				local collection = context.lapis.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 					migrations = {
 						{ migrate = migrate, backwardsCompatible = false },
@@ -549,9 +513,6 @@ return function(x)
 				lapisWithV0.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
 				local collectionWithV0 = lapisWithV0.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 				})
 
@@ -563,9 +524,6 @@ return function(x)
 				lapisWithV1.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
 				local collectionWithV1 = lapisWithV1.createCollection("collection", {
-					validate = function()
-						return true
-					end,
 					defaultData = "a",
 					migrations = {
 						{ migrate = migrate, backwardsCompatible = false },

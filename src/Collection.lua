@@ -17,7 +17,7 @@ local Collection = {}
 Collection.__index = Collection
 
 function Collection.new(name, options, data, autoSave, config)
-	if typeof(options.defaultData) ~= "function" then
+	if typeof(options.defaultData) ~= "function" and options.validate ~= nil then
 		assert(options.validate(options.defaultData))
 	end
 
@@ -74,11 +74,13 @@ function Collection:load(key, defaultUserIds)
 						return "fail", `'defaultData' threw an error: {tailoredDefaultData}`
 					end
 
-					local validateOk, valid, message = pcall(self.options.validate, tailoredDefaultData)
-					if not validateOk then
-						return "fail", `'validate' threw an error: {valid}`
-					elseif not valid then
-						return "fail", `Invalid data: {message}`
+					if self.options.validate ~= nil then
+						local validateOk, valid, message = pcall(self.options.validate, tailoredDefaultData)
+						if not validateOk then
+							return "fail", `'validate' threw an error: {valid}`
+						elseif not valid then
+							return "fail", `Invalid data: {message}`
+						end
 					end
 
 					defaultData = copyDeep(tailoredDefaultData)
@@ -109,11 +111,13 @@ function Collection:load(key, defaultUserIds)
 				return "fail", migrated
 			end
 
-			local validateOk, valid, message = pcall(self.options.validate, migrated)
-			if not validateOk then
-				return "fail", `'validate' threw an error: {valid}`
-			elseif not valid then
-				return "fail", `Invalid data: {message}`
+			if self.options.validate ~= nil then
+				local validateOk, valid, message = pcall(self.options.validate, migrated)
+				if not validateOk then
+					return "fail", `'validate' threw an error: {valid}`
+				elseif not valid then
+					return "fail", `Invalid data: {message}`
+				end
 			end
 
 			local data = {
