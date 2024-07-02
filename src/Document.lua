@@ -52,6 +52,8 @@ end
 --[=[
 	Writes the document's data.
 
+	If [`CollectionOptions.freezeData`](Lapis#CollectionOptions<T>) is `true`, `data` will be deep frozen.
+
 	:::warning
 	Throws an error if the document was closed or if the data is invalid.
 	:::
@@ -65,7 +67,9 @@ function Document:write(data)
 		assert(self.validate(data))
 	end
 
-	freezeDeep(data)
+	if self.collection.options.freezeData then
+		freezeDeep(data)
+	end
 
 	self.data = data
 end
@@ -135,6 +139,15 @@ function Document:save()
 					return "fail", "The session lock was stolen"
 				end
 
+				if not self.collection.options.freezeData and self.validate ~= nil then
+					local validateOk, valid, message = pcall(self.validate, self.data)
+					if not validateOk then
+						return "fail", `'validate' threw an error: {valid}`
+					elseif not valid then
+						return "fail", `Invalid data: {message}`
+					end
+				end
+
 				value.data = self.data
 
 				return "succeed", value, self.userIds
@@ -172,6 +185,15 @@ function Document:close()
 				return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 					if value.lockId ~= self.lockId then
 						return "fail", "The session lock was stolen"
+					end
+
+					if not self.collection.options.freezeData and self.validate ~= nil then
+						local validateOk, valid, message = pcall(self.validate, self.data)
+						if not validateOk then
+							return "fail", `'validate' threw an error: {valid}`
+						elseif not valid then
+							return "fail", `Invalid data: {message}`
+						end
 					end
 
 					value.data = self.data

@@ -21,8 +21,6 @@ function Collection.new(name, options, data, autoSave, config)
 		assert(options.validate(options.defaultData))
 	end
 
-	freezeDeep(options.defaultData)
-
 	local migrations = {}
 	if options.migrations ~= nil then
 		for _, migration in options.migrations do
@@ -34,6 +32,10 @@ function Collection.new(name, options, data, autoSave, config)
 		end
 	end
 	options.migrations = migrations
+
+	options.freezeData = if options.freezeData ~= nil then options.freezeData else true
+
+	freezeDeep(options)
 
 	return setmetatable({
 		dataStore = config:get("dataStoreService"):GetDataStore(name),
@@ -86,7 +88,9 @@ function Collection:load(key, defaultUserIds)
 					defaultData = copyDeep(tailoredDefaultData)
 				else
 					-- The data was validated when the collection was created.
-					defaultData = self.options.defaultData
+					defaultData = if self.options.freezeData
+						then self.options.defaultData
+						else copyDeep(self.options.defaultData)
 				end
 
 				local data = {
@@ -139,7 +143,9 @@ function Collection:load(key, defaultUserIds)
 
 			local data = value.data
 
-			freezeDeep(data)
+			if self.options.freezeData then
+				freezeDeep(data)
+			end
 
 			local document = Document.new(self, key, self.options.validate, lockId, data, keyInfo)
 
