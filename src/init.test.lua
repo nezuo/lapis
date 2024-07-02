@@ -5,14 +5,16 @@ local DataStoreServiceMock = require(ReplicatedStorage.DevPackages.DataStoreServ
 local Internal = require(script.Parent.Internal)
 local Promise = require(script.Parent.Parent.Promise)
 
-local DEFAULT_OPTIONS = {
-	validate = function(data)
-		return typeof(data.apples) == "number", "apples should be a number"
-	end,
-	defaultData = {
-		apples = 20,
-	},
-}
+local function defaultOptions()
+	return {
+		validate = function(data)
+			return typeof(data.apples) == "number", "apples should be a number"
+		end,
+		defaultData = {
+			apples = 20,
+		},
+	}
+end
 
 return function(x)
 	local assertEqual = x.assertEqual
@@ -81,10 +83,10 @@ return function(x)
 	end)
 
 	x.test("throws when creating a duplicate collection", function(context)
-		context.lapis.createCollection("foo", DEFAULT_OPTIONS)
+		context.lapis.createCollection("foo", defaultOptions())
 
 		shouldThrow(function()
-			context.lapis.createCollection("foo", DEFAULT_OPTIONS)
+			context.lapis.createCollection("foo", defaultOptions())
 		end, 'Collection "foo" already exists')
 	end)
 
@@ -213,7 +215,7 @@ return function(x)
 	end)
 
 	x.test("should not override data if validation fails", function(context)
-		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
 
 		context.write("collection", "doc", { apples = "string" })
 
@@ -227,13 +229,13 @@ return function(x)
 	end)
 
 	x.test("should session lock the document", function(context)
-		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
 		local document = collection:load("doc"):expect()
 
 		local otherLapis = Internal.new(false)
 		otherLapis.setConfig({ dataStoreService = context.dataStoreService, loadAttempts = 1 })
 
-		local otherCollection = otherLapis.createCollection("collection", DEFAULT_OPTIONS)
+		local otherCollection = otherLapis.createCollection("collection", defaultOptions())
 
 		shouldThrow(function()
 			otherCollection:load("doc"):expect()
@@ -253,7 +255,7 @@ return function(x)
 	end)
 
 	x.test("load should retry when document is session locked", function(context)
-		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
 		local document = collection:load("doc"):expect()
 
 		local otherLapis = Internal.new(false)
@@ -264,7 +266,7 @@ return function(x)
 			showRetryWarnings = false,
 		})
 
-		local otherCollection = otherLapis.createCollection("collection", DEFAULT_OPTIONS)
+		local otherCollection = otherLapis.createCollection("collection", defaultOptions())
 		local promise = otherCollection:load("doc")
 
 		-- Wait for the document to attempt to load once.
@@ -277,7 +279,7 @@ return function(x)
 	end)
 
 	x.test("second load should fail because of session lock", function(context)
-		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
 
 		context.lapis.setConfig({ loadAttempts = 1 })
 
@@ -295,7 +297,7 @@ return function(x)
 		context.lapis.setConfig({ loadAttempts = 1 })
 		context.dataStoreService.errors:addSimulatedErrors(1)
 
-		local collection = context.lapis.createCollection("ghi", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("ghi", defaultOptions())
 
 		local promise1 = collection:load("ghi")
 
@@ -538,7 +540,7 @@ return function(x)
 	end)
 
 	x.test("closing and immediately opening should return a new document", function(context)
-		local collection = context.lapis.createCollection("ccc", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("ccc", defaultOptions())
 
 		local document = collection:load("doc"):expect()
 
@@ -553,7 +555,7 @@ return function(x)
 	end)
 
 	x.test("closes all document on game:BindToClose", function(context)
-		local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
 
 		local one = collection:load("one"):expect()
 		local two = collection:load("two"):expect()
@@ -584,7 +586,7 @@ return function(x)
 
 	x.nested("user ids", function()
 		x.test("it uses defaultUserIds on first load", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			local document = collection:load("document", { 123 }):expect()
 			context.expectUserIds("collection", "document", { 123 })
@@ -599,7 +601,7 @@ return function(x)
 		end)
 
 		x.test("adds new user ids", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			local document = collection:load("document", {}):expect()
 
@@ -619,7 +621,7 @@ return function(x)
 		end)
 
 		x.test("removes new user ids", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			local document = collection:load("document", { 333, 444, 555 }):expect()
 
@@ -640,7 +642,7 @@ return function(x)
 
 	x.nested("load during BindToClose", function()
 		x.test("load infinitely yields after BindToClose", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			task.spawn(function()
 				context.lapis.autoSave:onGameClose()
@@ -652,7 +654,7 @@ return function(x)
 		end)
 
 		x.test("load just before BindToClose", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			context.dataStoreService.yield:startYield()
 
@@ -691,7 +693,7 @@ return function(x)
 		end)
 
 		x.test("BindToClose should finish if a document fails to load", function(context)
-			local collection = context.lapis.createCollection("collection", DEFAULT_OPTIONS)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
 
 			context.write("collection", "document", "INVALID DATA")
 			collection:load("document"):catch(function() end)
@@ -704,6 +706,89 @@ return function(x)
 			end)
 				:timeout(1)
 				:expect()
+		end)
+	end)
+
+	x.nested("freezeData = false", function()
+		x.test("default data should be deep copied", function(context)
+			local defaultData = { foo = {} }
+
+			local collection = context.lapis.createCollection("collection", {
+				freezeData = false,
+				defaultData = defaultData,
+			})
+
+			local document = collection:load("document"):expect()
+			local data = document:read()
+
+			assert(data ~= defaultData, "")
+			assert(data.foo ~= defaultData.foo, "")
+			assert(typeof(data.foo) == "table", "")
+		end)
+
+		x.test("data should not be frozen", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				freezeData = false,
+				defaultData = {},
+			})
+			local document = collection:load("document"):expect()
+
+			-- This would error if the data was frozen.
+			document:read().apples = 1
+
+			-- Make sure write doesn't freeze the data.
+			document:write(document:read())
+			document:read().apples = 1
+		end)
+
+		x.test("should validate data in save and close", function(context)
+			local valid = true
+			local collection = context.lapis.createCollection("collection", {
+				freezeData = false,
+				validate = function()
+					return valid, "data is invalid"
+				end,
+				defaultData = {},
+			})
+
+			local document = collection:load("document"):expect()
+
+			valid = false
+
+			shouldThrow(function()
+				document:save():expect()
+			end, "data is invalid")
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "data is invalid")
+		end)
+
+		x.test("should handle validate errors data in save and close", function(context)
+			local throwError = false
+			local collection = context.lapis.createCollection("collection", {
+				freezeData = false,
+				validate = function()
+					if throwError then
+						error("foo")
+					end
+
+					return true
+				end,
+				defaultData = {},
+			})
+
+			local document = collection:load("document"):expect()
+
+			throwError = true
+
+			shouldThrow(function()
+				document:save():expect()
+			end, "'validate' threw an error", "foo")
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "'validate' threw an error", "foo")
 		end)
 	end)
 end
