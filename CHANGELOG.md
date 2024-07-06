@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.3.1 - July 6, 2024
 * Added `Document:keyInfo()`. It returns the last updated `DataStoreKeyInfo` returned from loading, saving, or closing the document. ([#50])
 * Migrations can now update the data mutably. Note: The value still needs to be returned from the migration function. ([#51])
 * Gracefully handle `validate` throwing an error in `Collection:load`. Before it would keep retrying the load and spam the console with confusing errors. ([#52])
@@ -18,7 +20,7 @@ For more information, see the [docs](https://nezuo.github.io/lapis/docs/Migratio
 [#56]: https://github.com/nezuo/lapis/pull/56
 [#57]: https://github.com/nezuo/lapis/pull/57
 
-### 0.3.0 - April 14, 2024
+## 0.3.0 - April 14, 2024
 * **BREAKING CHANGE**: `Collection:load` no longer caches promises. Each call will now return a unique promise and attempt to load the document separately. This is to fix an edge case that can result in data loss. More information can be found in the pull request. ([#48])
 
 [#48]: https://github.com/nezuo/lapis/pull/48
