@@ -192,7 +192,6 @@ function Collection:read(key)
 
 		if self.options.validate ~= nil then
 			local validateOk, valid, message = pcall(self.options.validate, migrated)
-
 			if not validateOk then
 				return Promise.reject(`'validate' threw an error: {valid}`)
 			elseif not valid then
