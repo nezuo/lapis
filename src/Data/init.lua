@@ -45,6 +45,10 @@ function Data:waitForOngoingSaves()
 	return Promise.allSettled(promises)
 end
 
+function Data:read(dataStore, key)
+	return self.throttle:getAsync(dataStore, key)
+end
+
 function Data:load(dataStore, key, transform)
 	return self:waitForOngoingSave(dataStore, key):andThen(function()
 		local attempts = self.config:get("loadAttempts")

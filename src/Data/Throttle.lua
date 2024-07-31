@@ -2,6 +2,12 @@ local RunService = game:GetService("RunService")
 
 local Promise = require(script.Parent.Parent.Parent.Promise)
 
+local GET_ASYNC_RETRY_ATTEMPTS = 5
+local GET_ASYNC_RETRY_DELAY = 1
+
+local getAsyncOptions = Instance.new("DataStoreGetOptions")
+getAsyncOptions.UseCache = false
+
 local function updateAsync(throttle, request)
 	return Promise.new(function(resolve)
 		local resultOutside, transformedOutside, keyInfo
@@ -35,13 +41,28 @@ local function updateAsync(throttle, request)
 	end)
 end
 
+local function getAsync(request)
+	return Promise.new(function(resolve)
+		local ok, value, keyInfo = pcall(function()
+			return request.dataStore:GetAsync(request.key, getAsyncOptions)
+		end)
+
+		if ok then
+			resolve("succeed", value, keyInfo)
+		else
+			resolve("retry", value)
+		end
+	end)
+end
+
 local Throttle = {}
 Throttle.__index = Throttle
 
 function Throttle.new(config)
 	return setmetatable({
 		config = config,
-		queue = {},
+		updateAsyncQueue = {},
+		getAsyncQueue = {},
 		gameClosed = false,
 	}, Throttle)
 end
@@ -50,20 +71,38 @@ function Throttle:getUpdateAsyncBudget()
 	return self.config:get("dataStoreService"):GetRequestBudgetForRequestType(Enum.DataStoreRequestType.UpdateAsync)
 end
 
+function Throttle:getGetAsyncBudget()
+	return self.config:get("dataStoreService"):GetRequestBudgetForRequestType(Enum.DataStoreRequestType.GetAsync)
+end
+
 function Throttle:start()
-	RunService.PostSimulation:Connect(function()
-		for index = #self.queue, 1, -1 do
-			local request = self.queue[index]
+	local function retryRequest(request, err)
+		request.attempts -= 1
+
+		if request.attempts == 0 then
+			request.reject(`DataStoreFailure({err})`)
+		else
+			if self.config:get("showRetryWarnings") then
+				warn(`DataStore operation failed. Retrying...\nError: {err}`)
+			end
+
+			task.wait(request.retryDelay)
+		end
+	end
+
+	local function updateUpdateAsync()
+		for index = #self.updateAsyncQueue, 1, -1 do
+			local request = self.updateAsyncQueue[index]
 
 			if request.attempts == 0 then
-				table.remove(self.queue, index)
+				table.remove(self.updateAsyncQueue, index)
 			elseif request.promise == nil and request.cancelOnGameClose and self.gameClosed then
 				request.resolve("cancelled")
-				table.remove(self.queue, index)
+				table.remove(self.updateAsyncQueue, index)
 			end
 		end
 
-		for _, request in self.queue do
+		for _, request in self.updateAsyncQueue do
 			if self:getUpdateAsyncBudget() == 0 then
 				break
 			end
@@ -83,17 +122,7 @@ function Throttle:start()
 					request.attempts = 0
 					request.reject(`DataStoreFailure({value})`)
 				elseif result == "retry" then
-					request.attempts -= 1
-
-					if request.attempts == 0 then
-						request.reject(`DataStoreFailure({value})`)
-					else
-						if self.config:get("showRetryWarnings") then
-							warn(`DataStore operation failed. Retrying...\nError: {value}`)
-						end
-
-						task.wait(request.retryDelay)
-					end
+					retryRequest(request, value)
 				else
 					error("unreachable")
 				end
@@ -105,18 +134,73 @@ function Throttle:start()
 				request.promise = promise
 			end
 		end
+	end
+
+	local function updateGetAsync()
+		for index = #self.getAsyncQueue, 1, -1 do
+			local request = self.getAsyncQueue[index]
+
+			if request.attempts == 0 then
+				table.remove(self.getAsyncQueue, index)
+			end
+		end
+
+		for _, request in self.getAsyncQueue do
+			if self:getGetAsyncBudget() == 0 then
+				break
+			end
+
+			if request.promise ~= nil then
+				continue
+			end
+
+			local promise = getAsync(request):andThen(function(result, value, keyInfo)
+				if result == "succeed" then
+					request.attempts = 0
+					request.resolve(value, keyInfo)
+				elseif result == "retry" then
+					retryRequest(request, value)
+				else
+					error("unreachable")
+				end
+
+				request.promise = nil
+			end)
+
+			if promise:getStatus() == Promise.Status.Started then
+				request.promise = promise
+			end
+		end
+	end
+
+	RunService.PostSimulation:Connect(function()
+		updateUpdateAsync()
+		updateGetAsync()
 	end)
 end
 
 function Throttle:updateAsync(dataStore, key, transform, cancelOnGameClose, retryAttempts, retryDelay)
 	return Promise.new(function(resolve, reject)
-		table.insert(self.queue, {
+		table.insert(self.updateAsyncQueue, {
 			dataStore = dataStore,
 			key = key,
 			transform = transform,
 			attempts = retryAttempts,
 			retryDelay = retryDelay,
 			cancelOnGameClose = cancelOnGameClose,
+			resolve = resolve,
+			reject = reject,
+		})
+	end)
+end
+
+function Throttle:getAsync(dataStore, key)
+	return Promise.new(function(resolve, reject)
+		table.insert(self.getAsyncQueue, {
+			dataStore = dataStore,
+			key = key,
+			attempts = GET_ASYNC_RETRY_ATTEMPTS,
+			retryDelay = GET_ASYNC_RETRY_DELAY,
 			resolve = resolve,
 			reject = reject,
 		})

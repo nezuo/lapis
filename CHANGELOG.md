@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Added `Collection:read` to view a document's data without editing or session locking it. ([#59])
+
+[#59]: https://github.com/nezuo/lapis/pull/59
 
 ## 0.3.1 - July 6, 2024
 * Added `Document:keyInfo()`. It returns the last updated `DataStoreKeyInfo` returned from loading, saving, or closing the document. ([#50])

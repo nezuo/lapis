@@ -1,3 +1,5 @@
+--!strict
+
 local Internal = require(script.Internal)
 local PromiseTypes = require(script.PromiseTypes)
 
@@ -30,6 +32,7 @@ export type CollectionOptions<T> = {
 
 export type Collection<T> = {
 	load: (self: Collection<T>, key: string, defaultUserIds: { number }?) -> PromiseTypes.TypedPromise<Document<T>>,
+	read: (self: Collection<T>, key: string) -> PromiseTypes.TypedPromise<T?>,
 }
 
 export type Document<T> = {

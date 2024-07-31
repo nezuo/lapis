@@ -329,6 +329,10 @@ return function(x)
 			context.write("migration", "migration", "data")
 
 			collection:load("migration"):expect()
+
+			local readData = collection:read("migration"):expect()
+
+			assertEqual(readData, "newData")
 		end)
 
 		x.test("error is thrown if a migration returns nil", function(context)
@@ -343,6 +347,10 @@ return function(x)
 
 			shouldThrow(function()
 				collection:load("document"):expect()
+			end, "Migration 1 returned 'nil'")
+
+			shouldThrow(function()
+				collection:read("document"):expect()
 			end, "Migration 1 returned 'nil'")
 		end)
 
@@ -440,10 +448,12 @@ return function(x)
 						data = "b",
 					})
 
-					local promise = collection:load("document")
+					shouldThrow(function()
+						collection:load("document"):expect()
+					end, "Saved migration version 2 is not backwards compatible with version 1")
 
 					shouldThrow(function()
-						promise:expect()
+						collection:read("document"):expect()
 					end, "Saved migration version 2 is not backwards compatible with version 1")
 				end
 			)
@@ -486,6 +496,10 @@ return function(x)
 
 				shouldThrow(function()
 					collection:load("document"):expect()
+				end, "Saved migration version 1 is not backwards compatible with version 0")
+
+				shouldThrow(function()
+					collection:read("document"):expect()
 				end, "Saved migration version 1 is not backwards compatible with version 0")
 			end)
 
@@ -789,6 +803,68 @@ return function(x)
 			shouldThrow(function()
 				document:close():expect()
 			end, "'validate' threw an error", "foo")
+		end)
+	end)
+
+	x.nested("Collection:read", function()
+		x.test("returns nil when there is no data", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				defaultData = "data",
+			})
+
+			local data, keyInfo = collection:read("key"):expect()
+
+			assertEqual(data, nil)
+			assertEqual(keyInfo, nil)
+		end)
+
+		x.test("returns existing data", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				defaultData = "data",
+			})
+
+			collection:load("key", { 321 }):expect()
+
+			local data, keyInfo = collection:read("key"):expect()
+
+			assertEqual(data, "data")
+			assertEqual(keyInfo:GetUserIds()[1], 321)
+		end)
+
+		x.test("throws error when data is invalid", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				defaultData = "data",
+				validate = function(data)
+					return data == "data", "data was invalid"
+				end,
+			})
+
+			context.write("collection", "key", "INVALID DATA")
+
+			shouldThrow(function()
+				collection:read("key"):expect()
+			end, "Invalid data")
+		end)
+
+		x.test("throws error when validate throws", function(context)
+			local created = false
+			local collection = context.lapis.createCollection("collection", {
+				defaultData = "data",
+				validate = function()
+					if created then
+						error("validate error")
+					else
+						return true
+					end
+				end,
+			})
+			created = true
+
+			context.write("collection", "key", "data")
+
+			shouldThrow(function()
+				collection:read("key"):expect()
+			end, "'validate' threw an error")
 		end)
 	end)
 end
