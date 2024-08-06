@@ -2,8 +2,10 @@
 
 ## Unreleased Changes
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])
+* **IMPORTANT**: Fixed bug that resets a saved migration version that is ahead of the server's version and is backwards compatible. ([#60])
 
 [#59]: https://github.com/nezuo/lapis/pull/59
+[#60]: https://github.com/nezuo/lapis/pull/60
 
 ## 0.3.1 - July 6, 2024
 * Added `Document:keyInfo()`. It returns the last updated `DataStoreKeyInfo` returned from loading, saving, or closing the document. ([#50])
