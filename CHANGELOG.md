@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.3.2 - August 6, 2024
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])
 * **IMPORTANT**: Fixed bug that resets a saved migration version that is ahead of the server's version and is backwards compatible. ([#60])
 
