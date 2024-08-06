@@ -110,6 +110,8 @@ function Collection:load(key, defaultUserIds)
 				return "retry", "Could not acquire lock"
 			end
 
+			local savedVersion = value.migrationVersion
+
 			local migrationOk, migrated, lastCompatibleVersion = Migration.migrate(self.options.migrations, value)
 			if not migrationOk then
 				return "fail", migrated
@@ -125,7 +127,7 @@ function Collection:load(key, defaultUserIds)
 			end
 
 			local data = {
-				migrationVersion = #self.options.migrations,
+				migrationVersion = math.max(savedVersion, #self.options.migrations),
 				lastCompatibleVersion = lastCompatibleVersion,
 				lockId = lockId,
 				data = migrated,

@@ -550,6 +550,31 @@ return function(x)
 				-- This shouldn't error because v3 is backwards compatible with v1.
 				collectionWithV1:load("document"):expect()
 			end)
+
+			x.test("keeps saved version", function(context)
+				local collection = context.lapis.createCollection("collection", {
+					defaultData = "a",
+				})
+
+				local dataStore = context.dataStoreService.dataStores.collection.global
+				dataStore:write("document", {
+					lastCompatibleVersion = 0,
+					migrationVersion = 1,
+					data = "b",
+				})
+
+				local document = collection:load("document"):expect()
+
+				assertEqual(context.read("collection", "document").migrationVersion, 1)
+
+				document:save("document"):expect()
+
+				assertEqual(context.read("collection", "document").migrationVersion, 1)
+
+				document:close("document"):expect()
+
+				assertEqual(context.read("collection", "document").migrationVersion, 1)
+			end)
 		end)
 	end)
 
