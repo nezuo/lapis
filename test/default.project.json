@@ -20,7 +20,7 @@
     },
     "ServerScriptService": {
       "runTests": {
-        "$path": "runTests.server.lua"
+        "$path": "runTests.server.luau"
       }
     }
   }
