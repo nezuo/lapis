@@ -238,6 +238,18 @@ return function(x)
 	end)
 
 	x.nested("Document:beforeSave", function()
+		x.test("throws when yielding", function(context)
+			local document = context.lapis.createCollection("collection", defaultOptions()):load("document"):expect()
+
+			document:beforeSave(function()
+				task.wait()
+			end)
+
+			shouldThrow(function()
+				document:save():expect()
+			end, "beforeSave callback threw error: thread is not yieldable")
+		end)
+
 		x.test("throws when setting twice", function(context)
 			local document = context.lapis.createCollection("collection", defaultOptions()):load("document"):expect()
 
@@ -299,6 +311,18 @@ return function(x)
 	end)
 
 	x.nested("Document:beforeClose", function()
+		x.test("throws when yielding", function(context)
+			local document = context.lapis.createCollection("collection", defaultOptions()):load("document"):expect()
+
+			document:beforeClose(function()
+				task.wait()
+			end)
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "beforeClose callback threw error: thread is not yieldable")
+		end)
+
 		x.test("throws when setting twice", function(context)
 			local document = context.lapis.createCollection("collection", defaultOptions()):load("document"):expect()
 
