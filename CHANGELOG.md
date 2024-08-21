@@ -1,9 +1,10 @@
 # Lapis Changelog
 
 ## Unreleased Changes
-* Files now use the `.luau` extension instead of `.lua`.
+* Files now use the `.luau` extension instead of `.lua`. ([#61])
 * Switched wally realm to `shared`. This means Lapis can be used as a shared or server dependency. ([#62])
 
+[#61]: https://github.com/nezuo/lapis/pull/61
 [#62]: https://github.com/nezuo/lapis/pull/62
 
 ## 0.3.2 - August 6, 2024
