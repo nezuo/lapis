@@ -4,7 +4,7 @@ version = "0.3.2"
 registry = "https://github.com/UpliftGames/wally-index"
 exclude = ["**"]
 include = ["src", "src/*", "default.project.json", "wally.toml", "LICENSE"]
-realm = "server"
+realm = "shared"
 
 [dependencies]
 Promise = "evaera/promise@4.0.0"

@@ -1,6 +1,9 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+* Switched wally realm to `shared`. This means Lapis can be used as a shared or server dependency. ([#62])
+
+[#62]: https://github.com/nezuo/lapis/pull/62
 
 ## 0.3.2 - August 6, 2024
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])
