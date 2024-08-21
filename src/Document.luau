@@ -1,5 +1,6 @@
 local freezeDeep = require(script.Parent.freezeDeep)
 local Promise = require(script.Parent.Parent.Promise)
+local noYield = require(script.Parent.noYield)
 
 local function runCallback(document, name, callback)
 	if callback == nil then
@@ -9,7 +10,7 @@ local function runCallback(document, name, callback)
 	document.callingCallback = name
 
 	return Promise.new(function(resolve, reject)
-		local ok, message = pcall(callback)
+		local ok, message = pcall(noYield, callback)
 
 		document.callingCallback = nil
 
@@ -123,7 +124,7 @@ end
 	:::
 
 	:::warning
-	If the beforeSave callback errors, the returned promise will reject and the data will not be saved.
+	If the beforeSave callback yields or errors, the returned promise will reject and the data will not be saved.
 	:::
 
 	@return Promise<()>
@@ -165,7 +166,7 @@ end
 	If called again, it will return the promise from the original call.
 
 	:::warning
-	If the beforeSave or beforeClose callbacks error, the returned promise will reject and the data will not be saved.
+	If the beforeSave or beforeClose callbacks yield or error, the returned promise will reject and the data will not be saved.
 	:::
 
 	@return Promise<()>
