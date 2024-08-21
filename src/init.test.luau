@@ -48,7 +48,7 @@ return function(x)
 		context.expectUnlocked = function(name, key)
 			local data = dataStoreService.dataStores[name]["global"].data[key]
 
-			if data.lockId ~= nil then
+			if data ~= nil and data.lockId ~= nil then
 				error("Document is locked")
 			end
 		end
@@ -890,6 +890,34 @@ return function(x)
 			shouldThrow(function()
 				collection:read("key"):expect()
 			end, "'validate' threw an error")
+		end)
+	end)
+
+	x.nested("Collection:remove", function()
+		x.test("should remove data", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+
+			collection:load("document"):expect():close():expect()
+
+			collection:remove("document"):expect()
+
+			assertEqual(context.read("collection", "document"), nil)
+		end)
+
+		x.test("documents open during remove should fail to save/close", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+
+			local document = collection:load("document"):expect()
+
+			collection:remove("document"):expect()
+
+			shouldThrow(function()
+				document:save():expect()
+			end, "The document was removed")
+
+			shouldThrow(function()
+				document:close():expect()
+			end, "The document was removed")
 		end)
 	end)
 end
