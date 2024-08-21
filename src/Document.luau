@@ -136,6 +136,10 @@ function Document:save()
 	return runCallback(self, "beforeSave", self.beforeSaveCallback):andThen(function()
 		return self.collection.data
 			:save(self.collection.dataStore, self.key, function(value)
+				if value == nil then
+					return "fail", "The document was removed"
+				end
+
 				if value.lockId ~= self.lockId then
 					return "fail", "The session lock was stolen"
 				end
@@ -184,6 +188,10 @@ function Document:close()
 			end)
 			:andThen(function()
 				return self.collection.data:save(self.collection.dataStore, self.key, function(value)
+					if value == nil then
+						return "fail", "The document was removed"
+					end
+
 					if value.lockId ~= self.lockId then
 						return "fail", "The session lock was stolen"
 					end

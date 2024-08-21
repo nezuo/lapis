@@ -100,4 +100,8 @@ function Data:save(dataStore, key, transform)
 	end
 end
 
+function Data:remove(dataStore, key)
+	return self.throttle:removeAsync(dataStore, key)
+end
+
 return Data

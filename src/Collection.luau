@@ -205,4 +205,16 @@ function Collection:read(key)
 	end)
 end
 
+--[=[
+	Removes the data of the document with `key`.
+
+	If a document is open while `remove` is called, the open document will fail to save/close and the data will still be removed.
+
+	@param key string
+	@return Promise<()>
+]=]
+function Collection:remove(key)
+	return self.data:remove(self.dataStore, key)
+end
+
 return Collection

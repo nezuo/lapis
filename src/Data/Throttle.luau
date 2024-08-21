@@ -5,6 +5,9 @@ local Promise = require(script.Parent.Parent.Parent.Promise)
 local GET_ASYNC_RETRY_ATTEMPTS = 5
 local GET_ASYNC_RETRY_DELAY = 1
 
+local REMOVE_ASYNC_RETRY_ATTEMPTS = 5
+local REMOVE_ASYNC_RETRY_DELAY = 1
+
 local getAsyncOptions = Instance.new("DataStoreGetOptions")
 getAsyncOptions.UseCache = false
 
@@ -47,11 +50,17 @@ local function getAsync(request)
 			return request.dataStore:GetAsync(request.key, getAsyncOptions)
 		end)
 
-		if ok then
-			resolve("succeed", value, keyInfo)
-		else
-			resolve("retry", value)
-		end
+		resolve(ok, value, keyInfo)
+	end)
+end
+
+local function removeAsync(request)
+	return Promise.new(function(resolve)
+		local ok, message = pcall(function()
+			request.dataStore:RemoveAsync(request.key)
+		end)
+
+		resolve(ok, message)
 	end)
 end
 
@@ -63,6 +72,7 @@ function Throttle.new(config)
 		config = config,
 		updateAsyncQueue = {},
 		getAsyncQueue = {},
+		removeAsyncQueue = {},
 		gameClosed = false,
 	}, Throttle)
 end
@@ -73,6 +83,12 @@ end
 
 function Throttle:getGetAsyncBudget()
 	return self.config:get("dataStoreService"):GetRequestBudgetForRequestType(Enum.DataStoreRequestType.GetAsync)
+end
+
+function Throttle:getRemoveAsyncBudget()
+	return self.config
+		:get("dataStoreService")
+		:GetRequestBudgetForRequestType(Enum.DataStoreRequestType.SetIncrementAsync)
 end
 
 function Throttle:start()
@@ -154,14 +170,47 @@ function Throttle:start()
 				continue
 			end
 
-			local promise = getAsync(request):andThen(function(result, value, keyInfo)
-				if result == "succeed" then
+			local promise = getAsync(request):andThen(function(ok, value, keyInfo)
+				if ok then
 					request.attempts = 0
 					request.resolve(value, keyInfo)
-				elseif result == "retry" then
-					retryRequest(request, value)
 				else
-					error("unreachable")
+					retryRequest(request, value)
+				end
+
+				request.promise = nil
+			end)
+
+			if promise:getStatus() == Promise.Status.Started then
+				request.promise = promise
+			end
+		end
+	end
+
+	local function updateRemoveAsync()
+		for index = #self.removeAsyncQueue, 1, -1 do
+			local request = self.removeAsyncQueue[index]
+
+			if request.attempts == 0 then
+				table.remove(self.removeAsyncQueue, index)
+			end
+		end
+
+		for _, request in self.removeAsyncQueue do
+			if self:getRemoveAsyncBudget() == 0 then
+				break
+			end
+
+			if request.promise ~= nil then
+				continue
+			end
+
+			local promise = removeAsync(request):andThen(function(ok, message)
+				if ok then
+					request.attempts = 0
+					request.resolve()
+				else
+					retryRequest(request, message)
 				end
 
 				request.promise = nil
@@ -176,6 +225,7 @@ function Throttle:start()
 	RunService.PostSimulation:Connect(function()
 		updateUpdateAsync()
 		updateGetAsync()
+		updateRemoveAsync()
 	end)
 end
 
@@ -201,6 +251,19 @@ function Throttle:getAsync(dataStore, key)
 			key = key,
 			attempts = GET_ASYNC_RETRY_ATTEMPTS,
 			retryDelay = GET_ASYNC_RETRY_DELAY,
+			resolve = resolve,
+			reject = reject,
+		})
+	end)
+end
+
+function Throttle:removeAsync(dataStore, key)
+	return Promise.new(function(resolve, reject)
+		table.insert(self.removeAsyncQueue, {
+			dataStore = dataStore,
+			key = key,
+			attempts = REMOVE_ASYNC_RETRY_ATTEMPTS,
+			retryDelay = REMOVE_ASYNC_RETRY_DELAY,
 			resolve = resolve,
 			reject = reject,
 		})
