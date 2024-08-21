@@ -3,9 +3,11 @@
 ## Unreleased Changes
 * Files now use the `.luau` extension instead of `.lua`. ([#61])
 * Switched wally realm to `shared`. This means Lapis can be used as a shared or server dependency. ([#62])
+* `beforeClose` and `beforeSave` now throw an error if they yield. For more information, see the PR. ([#63])
 
 [#61]: https://github.com/nezuo/lapis/pull/61
 [#62]: https://github.com/nezuo/lapis/pull/62
+[#63]: https://github.com/nezuo/lapis/pull/63
 
 ## 0.3.2 - August 6, 2024
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])
