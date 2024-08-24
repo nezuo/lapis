@@ -9,12 +9,14 @@
   * `beforeSave`/`beforeClose` threw an error.
   * `validate` threw an error.
   * `validate` didn't return `true`.
+* `DataStoreKeyInfo:GetMetadata()` is now preserved. Before, it would be erased anytime a `Document` was saved or closed. ([#67])
 
 [#61]: https://github.com/nezuo/lapis/pull/61
 [#62]: https://github.com/nezuo/lapis/pull/62
 [#64]: https://github.com/nezuo/lapis/pull/64
 [#65]: https://github.com/nezuo/lapis/pull/65
 [#66]: https://github.com/nezuo/lapis/pull/66
+[#67]: https://github.com/nezuo/lapis/pull/67
 
 ## 0.3.2 - August 6, 2024
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])

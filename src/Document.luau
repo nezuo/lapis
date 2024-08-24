@@ -137,7 +137,7 @@ function Document:save()
 	return runCallback(self, "beforeSave", self.beforeSaveCallback)
 		:andThen(function()
 			return self.collection.data
-				:save(self.collection.dataStore, self.key, function(value)
+				:save(self.collection.dataStore, self.key, function(value, keyInfo)
 					if value == nil then
 						return "fail", Error.new("DocumentRemoved", "The document was removed")
 					end
@@ -157,7 +157,7 @@ function Document:save()
 
 					value.data = self.data
 
-					return "succeed", value, self.userIds
+					return "succeed", value, self.userIds, keyInfo:GetMetadata()
 				end)
 				:andThen(function(_, keyInfo)
 					self.lastKeyInfo = keyInfo
@@ -192,7 +192,7 @@ function Document:close()
 				self.collection.autoSave:removeDocument(self)
 			end)
 			:andThen(function()
-				return self.collection.data:save(self.collection.dataStore, self.key, function(value)
+				return self.collection.data:save(self.collection.dataStore, self.key, function(value, keyInfo)
 					if value == nil then
 						return "fail", Error.new("DocumentRemoved", "The document was removed")
 					end
@@ -213,7 +213,7 @@ function Document:close()
 					value.data = self.data
 					value.lockId = nil
 
-					return "succeed", value, self.userIds
+					return "succeed", value, self.userIds, keyInfo:GetMetadata()
 				end)
 			end)
 			:andThen(function(_, keyInfo)
