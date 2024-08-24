@@ -5,11 +5,16 @@
 * Switched wally realm to `shared`. This means Lapis can be used as a shared or server dependency. ([#62])
 * `beforeClose` and `beforeSave` now throw an error if they yield. For more information, see the PR. ([#64])
 * Added `Collection:remove` to remove the data from a document. ([#65])
+* Session locks will now be removed from documents if `Document:close` fails for the following reasons: ([#66])
+  * `beforeSave`/`beforeClose` threw an error.
+  * `validate` threw an error.
+  * `validate` didn't return `true`.
 
 [#61]: https://github.com/nezuo/lapis/pull/61
 [#62]: https://github.com/nezuo/lapis/pull/62
 [#64]: https://github.com/nezuo/lapis/pull/64
 [#65]: https://github.com/nezuo/lapis/pull/65
+[#66]: https://github.com/nezuo/lapis/pull/66
 
 ## 0.3.2 - August 6, 2024
 * Added `Collection:read` to view a document's data without editing or session locking it. ([#59])

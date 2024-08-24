@@ -1,6 +1,7 @@
 local HttpService = game:GetService("HttpService")
 
 local Document = require(script.Parent.Document)
+local Error = require(script.Parent.Error)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Migration = require(script.Parent.Migration)
 local Promise = require(script.Parent.Parent.Promise)
@@ -65,23 +66,23 @@ function Collection:load(key, defaultUserIds)
 
 	self.autoSave.ongoingLoads += 1
 
-	return self
-		.data
+	return self.data
 		:load(self.dataStore, key, function(value, keyInfo)
 			if value == nil then
 				local defaultData
 				if typeof(self.options.defaultData) == "function" then
 					local defaultOk, tailoredDefaultData = pcall(self.options.defaultData, key)
 					if not defaultOk then
-						return "fail", `'defaultData' threw an error: {tailoredDefaultData}`
+						return "fail",
+							Error.new("DefaultDataThrew", `'defaultData' threw an error: {tailoredDefaultData}`)
 					end
 
 					if self.options.validate ~= nil then
 						local validateOk, valid, message = pcall(self.options.validate, tailoredDefaultData)
 						if not validateOk then
-							return "fail", `'validate' threw an error: {valid}`
+							return "fail", Error.new("ValidateThrew", `'validate' threw an error: {valid}`)
 						elseif not valid then
-							return "fail", `Invalid data: {message}`
+							return "fail", Error.new("ValidateFailed", `Invalid data: {message}`)
 						end
 					end
 
@@ -107,22 +108,22 @@ function Collection:load(key, defaultUserIds)
 				value.lockId ~= nil
 				and (DateTime.now().UnixTimestampMillis - keyInfo.UpdatedTime) / 1000 < LOCK_EXPIRE
 			then
-				return "retry", "Could not acquire lock"
+				return "retry", Error.new("SessionLocked", "Could not acquire lock")
 			end
 
 			local savedVersion = value.migrationVersion
 
 			local migrationOk, migrated, lastCompatibleVersion = Migration.migrate(self.options.migrations, value)
 			if not migrationOk then
-				return "fail", migrated
+				return "fail", Error.new("MigrationError", migrated)
 			end
 
 			if self.options.validate ~= nil then
 				local validateOk, valid, message = pcall(self.options.validate, migrated)
 				if not validateOk then
-					return "fail", `'validate' threw an error: {valid}`
+					return "fail", Error.new("ValidateThrew", `'validate' threw an error: {valid}`)
 				elseif not valid then
-					return "fail", `Invalid data: {message}`
+					return "fail", Error.new("ValidateFailed", `Invalid data: {message}`)
 				end
 			end
 
@@ -162,11 +163,10 @@ function Collection:load(key, defaultUserIds)
 
 			return document
 		end)
-		-- finally is used instead of catch so it doesn't handle rejection.
-		:finally(function(status)
-			if status ~= Promise.Status.Resolved then
-				self.autoSave.ongoingLoads -= 1
-			end
+		:catch(function(err)
+			self.autoSave.ongoingLoads -= 1
+
+			return Promise.reject(`DataStoreFailure({err.message})`)
 		end)
 end
 

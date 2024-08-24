@@ -1,5 +1,6 @@
 local RunService = game:GetService("RunService")
 
+local Error = require(script.Parent.Parent.Error)
 local Promise = require(script.Parent.Parent.Parent.Promise)
 
 local GET_ASYNC_RETRY_ATTEMPTS = 5
@@ -21,13 +22,13 @@ local function updateAsync(throttle, request)
 					return nil
 				end
 
-				local result, transformed, userIds = request.transform(...)
+				local result, transformed, userIds, metadata = request.transform(...)
 
 				resultOutside = result
 				transformedOutside = transformed
 
 				if result == "succeed" then
-					return transformed, userIds
+					return transformed, userIds, metadata
 				else
 					return nil
 				end
@@ -37,7 +38,7 @@ local function updateAsync(throttle, request)
 		if resultOutside == "cancelled" then
 			resolve("cancelled")
 		elseif not ok then
-			resolve("retry", err)
+			resolve("retry", Error.new("RobloxApiError", err))
 		else
 			resolve(resultOutside, transformedOutside, keyInfo)
 		end
@@ -96,10 +97,10 @@ function Throttle:start()
 		request.attempts -= 1
 
 		if request.attempts == 0 then
-			request.reject(`DataStoreFailure({err})`)
+			request.reject(err)
 		else
 			if self.config:get("showRetryWarnings") then
-				warn(`DataStore operation failed. Retrying...\nError: {err}`)
+				warn(`DataStore operation failed. Retrying...\nError: {err.message}`)
 			end
 
 			task.wait(request.retryDelay)
@@ -136,7 +137,7 @@ function Throttle:start()
 					request.resolve(value, keyInfo)
 				elseif result == "fail" then
 					request.attempts = 0
-					request.reject(`DataStoreFailure({value})`)
+					request.reject(value)
 				elseif result == "retry" then
 					retryRequest(request, value)
 				else

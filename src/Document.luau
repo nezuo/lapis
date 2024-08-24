@@ -1,3 +1,4 @@
+local Error = require(script.Parent.Error)
 local freezeDeep = require(script.Parent.freezeDeep)
 local Promise = require(script.Parent.Parent.Promise)
 local noYield = require(script.Parent.noYield)
@@ -15,7 +16,7 @@ local function runCallback(document, name, callback)
 		document.callingCallback = nil
 
 		if not ok then
-			reject(`{name} callback threw error: {message}`)
+			reject(Error.new("BeforeSaveCloseCallbackThrew", `{name} callback threw error: {message}`))
 		else
 			resolve()
 		end
@@ -133,34 +134,38 @@ function Document:save()
 	assert(not self.closed, "Cannot save a closed document")
 	assert(self.callingCallback == nil, `Cannot save in {self.callingCallback} callback`)
 
-	return runCallback(self, "beforeSave", self.beforeSaveCallback):andThen(function()
-		return self.collection.data
-			:save(self.collection.dataStore, self.key, function(value)
-				if value == nil then
-					return "fail", "The document was removed"
-				end
-
-				if value.lockId ~= self.lockId then
-					return "fail", "The session lock was stolen"
-				end
-
-				if not self.collection.options.freezeData and self.validate ~= nil then
-					local validateOk, valid, message = pcall(self.validate, self.data)
-					if not validateOk then
-						return "fail", `'validate' threw an error: {valid}`
-					elseif not valid then
-						return "fail", `Invalid data: {message}`
+	return runCallback(self, "beforeSave", self.beforeSaveCallback)
+		:andThen(function()
+			return self.collection.data
+				:save(self.collection.dataStore, self.key, function(value)
+					if value == nil then
+						return "fail", Error.new("DocumentRemoved", "The document was removed")
 					end
-				end
 
-				value.data = self.data
+					if value.lockId ~= self.lockId then
+						return "fail", Error.new("SessionLockStolen", "The session lock was stolen")
+					end
 
-				return "succeed", value, self.userIds
-			end)
-			:andThen(function(_, keyInfo)
-				self.lastKeyInfo = keyInfo
-			end)
-	end)
+					if not self.collection.options.freezeData and self.validate ~= nil then
+						local validateOk, valid, message = pcall(self.validate, self.data)
+						if not validateOk then
+							return "fail", Error.new("ValidateThrew", `'validate' threw an error: {valid}`)
+						elseif not valid then
+							return "fail", Error.new("ValidateFailed", `Invalid data: {message}`)
+						end
+					end
+
+					value.data = self.data
+
+					return "succeed", value, self.userIds
+				end)
+				:andThen(function(_, keyInfo)
+					self.lastKeyInfo = keyInfo
+				end)
+		end)
+		:catch(function(err)
+			return Promise.reject(`DataStoreFailure({err.message})`)
+		end)
 end
 
 --[=[
@@ -189,19 +194,19 @@ function Document:close()
 			:andThen(function()
 				return self.collection.data:save(self.collection.dataStore, self.key, function(value)
 					if value == nil then
-						return "fail", "The document was removed"
+						return "fail", Error.new("DocumentRemoved", "The document was removed")
 					end
 
 					if value.lockId ~= self.lockId then
-						return "fail", "The session lock was stolen"
+						return "fail", Error.new("SessionLockStolen", "The session lock was stolen")
 					end
 
 					if not self.collection.options.freezeData and self.validate ~= nil then
 						local validateOk, valid, message = pcall(self.validate, self.data)
 						if not validateOk then
-							return "fail", `'validate' threw an error: {valid}`
+							return "fail", Error.new("ValidateThrew", `'validate' threw an error: {valid}`)
 						elseif not valid then
-							return "fail", `Invalid data: {message}`
+							return "fail", Error.new("ValidateFailed", `Invalid data: {message}`)
 						end
 					end
 
@@ -213,6 +218,26 @@ function Document:close()
 			end)
 			:andThen(function(_, keyInfo)
 				self.lastKeyInfo = keyInfo
+			end)
+			:catch(function(err)
+				if
+					err.kind == "BeforeSaveCloseCallbackThrew"
+					or err.kind == "ValidateThrew"
+					or err.kind == "ValidateFailed"
+				then
+					self.collection.autoSave.ongoingRemoveLocks += 1
+
+					self.collection.data
+						:removeLock(self.collection.dataStore, self.key, self.lockId)
+						:catch(function(removeLockErr)
+							warn(`RemoveLockFailure({removeLockErr.message})`)
+						end)
+						:finally(function()
+							self.collection.autoSave.ongoingRemoveLocks -= 1
+						end)
+				end
+
+				return Promise.reject(`DataStoreFailure({err.message})`)
 			end)
 	end
 
