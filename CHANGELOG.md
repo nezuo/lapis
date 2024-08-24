@@ -1,6 +1,8 @@
 # Lapis Changelog
 
 ## Unreleased Changes
+
+## 0.3.3 - August 24, 2024
 * Files now use the `.luau` extension instead of `.lua`. ([#61])
 * Switched wally realm to `shared`. This means Lapis can be used as a shared or server dependency. ([#62])
 * `beforeClose` and `beforeSave` now throw an error if they yield. For more information, see the PR. ([#64])
