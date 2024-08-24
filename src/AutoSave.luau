@@ -13,6 +13,7 @@ function AutoSave.new(data)
 		data = data,
 		gameClosed = false,
 		ongoingLoads = 0,
+		ongoingRemoveLocks = 0,
 	}, AutoSave)
 end
 
@@ -42,16 +43,22 @@ function AutoSave:onGameClose()
 		self.documents[#self.documents]:close()
 	end
 
-	Promise.allSettled({
-		Promise.try(function()
-			while self.ongoingLoads > 0 do
-				task.wait()
-			end
-		end):andThen(function()
-			return self.data:waitForOngoingSaves()
-		end),
-		self.data:waitForOngoingSaves(),
-	}):await()
+	Promise.try(function()
+		while self.ongoingLoads > 0 do
+			task.wait()
+		end
+	end)
+		:andThen(function()
+			return Promise.allSettled({
+				self.data:waitForOngoingSaves(),
+				Promise.try(function()
+					while self.ongoingRemoveLocks > 0 do
+						task.wait()
+					end
+				end),
+			})
+		end)
+		:await()
 end
 
 function AutoSave:start()

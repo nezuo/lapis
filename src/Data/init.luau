@@ -1,3 +1,4 @@
+local Error = require(script.Parent.Error)
 local Promise = require(script.Parent.Parent.Promise)
 local Throttle = require(script.Throttle)
 
@@ -98,6 +99,26 @@ function Data:save(dataStore, key, transform)
 
 		return ongoingSave.pendingSave.promise
 	end
+end
+
+function Data:removeLock(dataStore, key, lockIdToRemove)
+	local function transform(value, keyInfo)
+		if value == nil then
+			return "fail", Error.new("DocumentRemoved", "The document was removed")
+		end
+
+		if value.lockId ~= lockIdToRemove then
+			return "fail", Error.new("SessionLockStolen", "The session lock was stolen")
+		end
+
+		value.lockId = nil
+
+		return "succeed", value, keyInfo:GetUserIds(), keyInfo:GetMetadata()
+	end
+
+	local attempts = self.config:get("saveAttempts")
+
+	return self.throttle:updateAsync(dataStore, key, transform, false, attempts)
 end
 
 function Data:remove(dataStore, key)

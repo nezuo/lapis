@@ -31,14 +31,14 @@ return function(x)
 		context.lapis = Internal.new(false)
 		context.lapis.setConfig({ dataStoreService = dataStoreService, showRetryWarnings = false })
 
-		context.write = function(name, key, data, lockId)
+		context.write = function(name, key, data, lockId, userIds, metadata)
 			local dataStore = dataStoreService.dataStores[name]["global"]
 
 			dataStore:write(key, {
 				migrationVersion = 0,
 				lockId = lockId,
 				data = data,
-			})
+			}, userIds, metadata)
 		end
 
 		context.read = function(name, key)
@@ -50,6 +50,14 @@ return function(x)
 
 			if data ~= nil and data.lockId ~= nil then
 				error("Document is locked")
+			end
+		end
+
+		context.expectLocked = function(name, key)
+			local data = dataStoreService.dataStores[name]["global"].data[key]
+
+			if data == nil or data.lockId == nil then
+				error("Document is not locked")
 			end
 		end
 
@@ -918,6 +926,194 @@ return function(x)
 			shouldThrow(function()
 				document:close():expect()
 			end, "The document was removed")
+		end)
+	end)
+
+	x.nested("Document:close should still unlock after specific errors", function()
+		x.test("shouldn't overwrite stolen lock", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+			local document = collection:load("document"):expect()
+
+			context.write("collection", "document", { apples = 20 }, "stolen lock")
+
+			document:beforeSave(function()
+				error("oh no")
+			end)
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectLocked("collection", "document")
+		end)
+
+		x.test("doesn't work for session lock stolen error", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+			local document = collection:load("document"):expect()
+
+			context.write("collection", "document", { apples = 20 }, "another lock id")
+
+			document:write({ apples = 100 })
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectLocked("collection", "document")
+			assertEqual(context.read("collection", "document").data.apples, 20) -- Only the lock should have changed.
+		end)
+
+		x.test("beforeSave error", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+
+			local document = collection:load("document"):expect()
+
+			document:write({ apples = 100 })
+
+			document:beforeSave(function()
+				error("oh no")
+			end)
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectUnlocked("collection", "document")
+			assertEqual(context.read("collection", "document").data.apples, 20) -- Only the lock should have changed.
+		end)
+
+		x.test("beforeClose error", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+
+			local document = collection:load("document"):expect()
+
+			document:write({ apples = 100 })
+
+			document:beforeClose(function()
+				error("oh no")
+			end)
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectUnlocked("collection", "document")
+			assertEqual(context.read("collection", "document").data.apples, 20) -- Only the lock should have changed.
+		end)
+
+		x.test("validate error", function(context)
+			local collection = context.lapis.createCollection("collection", {
+				validate = function(data)
+					return typeof(data.apples) == "number", "apples should be a number"
+				end,
+				defaultData = { apples = 20 },
+				freezeData = false,
+			})
+
+			local document = collection:load("document"):expect()
+
+			document:read().apples = nil
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectUnlocked("collection", "document")
+			assertEqual(context.read("collection", "document").data.apples, 20) -- Only the lock should have changed.
+		end)
+
+		x.test("validate threw error", function(context)
+			local loaded = false
+			local collection = context.lapis.createCollection("collection", {
+				validate = function()
+					if loaded then
+						error("oh no")
+					end
+					return true
+				end,
+				defaultData = { apples = 20 },
+				freezeData = false,
+			})
+
+			local document = collection:load("document"):expect()
+
+			loaded = true
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			context.expectUnlocked("collection", "document")
+			assertEqual(context.read("collection", "document").data.apples, 20) -- Only the lock should have changed.
+		end)
+
+		x.test("onGameClose should wait for the lock to remove", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+			local document = collection:load("document"):expect()
+
+			document:beforeSave(function()
+				error("oh no")
+			end)
+
+			context.dataStoreService.yield:startYield()
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			local thread = task.spawn(function()
+				context.lapis.autoSave:onGameClose()
+			end)
+
+			assert(coroutine.status(thread) == "suspended", "onGameClose didn't wait for locks to be removed")
+
+			context.dataStoreService.yield:stopYield()
+
+			-- Wait for locks to be removed.
+			task.wait(0.1)
+
+			assert(coroutine.status(thread) == "dead", "")
+		end)
+
+		x.testFOCUS("should preserve userids/metadata", function(context)
+			local collection = context.lapis.createCollection("collection", defaultOptions())
+			local document = collection:load("document"):expect()
+
+			document:beforeSave(function()
+				error("oh no")
+			end)
+
+			context.write(
+				"collection",
+				"document",
+				document:read(),
+				context.read("collection", "document").lockId,
+				{ 1234 },
+				{ foo = "bar" }
+			)
+
+			shouldThrow(function()
+				document:close("document"):expect()
+			end)
+
+			task.wait(0.1)
+
+			local keyInfo = context.getKeyInfo("collection", "document")
+
+			assertEqual(keyInfo:GetUserIds()[1], 1234)
+			assertEqual(keyInfo:GetMetadata().foo, "bar")
 		end)
 	end)
 end
