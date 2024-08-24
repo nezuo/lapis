@@ -1087,7 +1087,7 @@ return function(x)
 			assert(coroutine.status(thread) == "dead", "")
 		end)
 
-		x.testFOCUS("should preserve userids/metadata", function(context)
+		x.test("should preserve userids/metadata", function(context)
 			local collection = context.lapis.createCollection("collection", defaultOptions())
 			local document = collection:load("document"):expect()
 
@@ -1115,5 +1115,25 @@ return function(x)
 			assertEqual(keyInfo:GetUserIds()[1], 1234)
 			assertEqual(keyInfo:GetMetadata().foo, "bar")
 		end)
+	end)
+
+	x.test("preserves metadata", function(context)
+		local collection = context.lapis.createCollection("collection", defaultOptions())
+
+		context.write("collection", "document", { apples = 30 }, nil, nil, { foo = "bar" })
+
+		local function verifyMetadata()
+			local keyInfo = context.getKeyInfo("collection", "document")
+			assertEqual(keyInfo:GetMetadata().foo, "bar")
+		end
+
+		local document = collection:load("document"):expect()
+		verifyMetadata()
+
+		document:save():expect()
+		verifyMetadata()
+
+		document:close():expect()
+		verifyMetadata()
 	end)
 end
