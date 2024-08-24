@@ -52,9 +52,15 @@ function Document:read()
 end
 
 --[=[
-	Writes the document's data.
+	Updates the document's cached data. This method doesn't save the data to the DataStore; it only modifies the
+	document's in-memory data.
 
-	If [`CollectionOptions.freezeData`](Lapis#CollectionOptions<T>) is `true`, `data` will be deep frozen.
+	This method should be used when performing immutable updates to the document's data. For mutable updates, the data
+	can be directly modified:
+	```lua
+	local data = document:read()
+	data.coins += 100
+	```
 
 	:::warning
 	Throws an error if the document was closed or if the data is invalid.
@@ -77,7 +83,8 @@ function Document:write(data)
 end
 
 --[=[
-	Adds a user id to the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is saved or closed.
+	Adds a user id to the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is
+	saved or closed.
 
 	If the user id is already associated with the document the method won't do anything.
 
@@ -92,7 +99,8 @@ function Document:addUserId(userId)
 end
 
 --[=[
-	Removes a user id from the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is saved or closed.
+	Removes a user id from the document's `DataStoreKeyInfo:GetUserIds()`. The change won't apply until the document is
+	saved or closed.
 
 	If the user id is not associated with the document the method won't do anything.
 
@@ -118,7 +126,11 @@ function Document:keyInfo()
 end
 
 --[=[
-	Saves the document's data. If the save is throttled and you call it multiple times, it will save only once with the latest data.
+	Saves the document's data. If the save is throttled and you call it multiple times, it will save only once with the
+	latest data.
+
+	Documents are saved automatically. This method is used mainly to handle developer product purchases
+	(see the [example](../docs/DeveloperProduct)) or other situations requiring immediate saving.
 
 	:::warning
 	Throws an error if the document was closed.
